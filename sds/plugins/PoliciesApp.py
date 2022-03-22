@@ -18,7 +18,7 @@ class PoliciesApp(sdsPluginBase):
                 "name":policy["name"],
                 "description":policy["description"],
                 "abbreviations":policy["abbreviations"][0],
-                "ids":policy["ids"]["ODS"] if "ODS" in policy["ids"].keys() else ""
+                "index":policy["ids"]["ODS"] if "ODS" in policy["ids"].keys() else ""
             }
 
         if(idx):
@@ -574,7 +574,7 @@ class PoliciesApp(sdsPluginBase):
 
             pipeline.extend([{"$skip":skip},{"$limit":max_results}])
 
-            result= self.colav_db["documents"].aggregate(pipeline)
+            result= self.colav_db["documents"].aggregate(pipeline,allowDiskUse=True)
         
             entry = []
 

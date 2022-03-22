@@ -20,7 +20,6 @@ class InstitutionsApp(sdsPluginBase):
                 "name":institution["name"],
                 "external_urls":institution["external_urls"],
                 "logo":institution["logo_url"],
-                "policies":{}
             }
             if "policies" in institution.keys():
                 for policy in institution["policies"]:
