@@ -20,19 +20,31 @@ class InstitutionsApp(sdsPluginBase):
                 "name":institution["name"],
                 "external_urls":institution["external_urls"],
                 "logo":institution["logo_url"],
+                "policies":{}
             }
+            index_list=[]
             if "policies" in institution.keys():
                 for policy in institution["policies"]:
                     policy_reg=self.colav_db["policies"].find_one({"_id":policy["id"]})
                     policy_entry={
                         "id":policy["id"],
-                        "index":policy_reg["ids"]["ODS"] if "ODS" in policy_reg["ids"].keys() else "",
+                        "index":"",
                         "name":policy["name"]
                     }
+                    if len(policy_reg["index"])>0:
+                        indexes=[]
+                        for index in policy_reg["index"]:
+                            indexes.append(index["index"])
+                            policy_entry["index"]+=str(int(index["index"]))+"."
+                        index_list.append(indexes)
+                        policy_entry["index"]=policy_entry["index"][:-1]
                     if policy_reg["abbreviations"][0] in entry["policies"].keys():
                         entry["policies"][policy_reg["abbreviations"][0]].append(policy_entry)
                     else:
                         entry["policies"][policy_reg["abbreviations"][0]]=[policy_entry]
+            if "ODS" in entry["policies"].keys():
+                sorted_ods=sorted(entry["policies"]["ODS"],key=lambda x:index_list[entry["policies"]["ODS"].index(x)])
+                entry["policies"]["ODS"]=sorted_ods
 
         if(idx):
             result=self.colav_db['documents'].find({"authors.affiliations.id":ObjectId(idx)},{"year_published":1}).sort([("year_published",ASCENDING)]).limit(1)
