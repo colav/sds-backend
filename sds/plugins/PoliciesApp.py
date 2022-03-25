@@ -18,8 +18,15 @@ class PoliciesApp(sdsPluginBase):
                 "name":policy["name"],
                 "description":policy["description"],
                 "abbreviations":policy["abbreviations"][0],
-                "index":policy["ids"]["ODS"] if "ODS" in policy["ids"].keys() else ""
+                "index":""
             }
+            if len(policy["index"])>0:
+                indexes=[]
+                for index in policy["index"]:
+                    indexes.append(index["index"])
+                    entry["index"]+=str(int(index["index"]))+"."
+                
+                entry["index"]=entry["index"][:-1]
 
         if(idx):
             result=self.colav_db['documents'].find({"policies.id":ObjectId(idx)},{"year_published":1}).sort([("year_published",ASCENDING)]).limit(1)
