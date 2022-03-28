@@ -495,16 +495,6 @@ class InstitutionsApp(sdsPluginBase):
 
 
     def get_groups(self,idx=None,page=1,max_results=100,sort="citations",direction="descending"):
-
-        pipeline=[
-            {"$match":{"type":"group","relations.id":ObjectId(idx)}},
-            {"$project":{"_id":1,"name":1}},
-            {"$lookup":{"from":"documents","localField":"_id","foreignField":"authors.affiliations.branches.id","as":"papers"}},
-            {"$project":{"papers.citations_count":1,"name":1}},
-            {"$unwind":"$papers"},
-            {"$group":{"_id":"$_id","citations":{"$sum":"$papers.citations_count"},"name":{"$first":"$name"}}},
-            {"$sort":{"citations":-1}}
-        ]
         
         total_results = self.colav_db["branches"].count_documents({"type":"group","relations.id":ObjectId(idx)})
 

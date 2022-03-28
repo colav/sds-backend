@@ -70,8 +70,14 @@ class AuthorsApp(sdsPluginBase):
 
             if "affiliations" in author.keys():
                 if len(author["affiliations"]):
-                    entry["affiliation"]["institution"]["id"]=author["affiliations"][-1]["id"]
-                    entry["affiliation"]["institution"]["name"]=author["affiliations"][-1]["name"]
+                    for aff in author["affiliations"]:
+                        if not "type" in aff.keys():
+                            entry["affiliation"]["institution"]["id"]=aff["id"]
+                            entry["affiliation"]["institution"]["name"]=aff["name"]
+                        else:
+                            if aff["type"]=="group":
+                                entry["affiliation"]["group"]["id"]  =aff["id"]
+                                entry["affiliation"]["group"]["name"]=aff["name"]
             
             if entry["affiliation"]["institution"]["id"] != "":
                     inst_db=self.colav_db["institutions"].find_one({"_id":ObjectId(entry["affiliation"]["institution"]["id"])})
@@ -80,11 +86,7 @@ class AuthorsApp(sdsPluginBase):
                         #entry["country"]=inst_db["addresses"][0]["country"]
                         entry["logo"]=inst_db["logo_url"]
 
-            if "branches" in author.keys():
-                for i in range(len(author["branches"])):
-                    if author["branches"][i]["type"]=="group":
-                        entry["affiliation"]["group"]["id"]  =author["branches"][i]["id"]
-                        entry["affiliation"]["group"]["name"]=author["branches"][i]["name"]
+                    
 
 
 

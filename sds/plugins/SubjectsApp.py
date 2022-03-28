@@ -13,6 +13,8 @@ class SubjectsApp(sdsPluginBase):
     def get_info(self,idx=None):
         initial_year=0
         final_year=0
+        groups=[]
+        institutions=[]
 
         if idx:
             result=self.colav_db['documents'].find({"subjects.id":ObjectId(idx)},
@@ -27,10 +29,14 @@ class SubjectsApp(sdsPluginBase):
                 result=list(result)
                 if len(result)>0:
                     final_year=result[0]["year_published"]
+            groups=list(self.colav_db["branches"].find({"type":"group","subjects.id":ObjectId(idx)},{"name":1}))
+            institutions=list(self.colav_db["institutions"].find({"subjects.id":ObjectId(idx)},{"name":1}))
 
         filters={
             "start_year":initial_year if initial_year!=0 else "",
-            "end_year":final_year if final_year!=0 else ""
+            "end_year":final_year if final_year!=0 else "",
+            "groups":groups,
+            "institutions":institutions
         }
 
         if idx:
@@ -508,21 +514,35 @@ class SubjectsApp(sdsPluginBase):
 
         return {"total":total_results,"page":page,"count":len(entry),"data":entry}
 
-    def get_authors(self,idx=None,page=1,max_results=100):
+    def get_authors(self,idx=None,page=1,max_results=100,start_year=None,end_year=None,groups=[],institutions=[],sort="citations",direction="descending"):
         if idx:
-            pipeline=[
-                {"$match":{"subjects.id":ObjectId(idx)}}
-            ]
-
-            pipeline.extend([
-                {"$unwind":"$authors"},
-                {"$project":{"authors":1,"citations_count":1}},
-                {"$group":{"_id":"$authors.id","papers_count":{"$sum":1},"citations_count":{"$sum":"$citations_count"},"author":{"$first":"$authors"}}},
-                {"$sort":{"citations_count":-1}},
-                {"$project":{"author.id":1,"author.full_name":1,"author.affiliations.name":1,"author.affiliations.id":1,
-                    "author.affiliations.branches.name":1,"author.affiliations.branches.type":1,"author.affiliations.branches.id":1,
-                    "papers_count":1,"citations_count":1}}
-            ])
+            if groups and institutions:
+                filter_list=[]
+                for group in groups.split(" "):
+                    filter_list.append({"affiliations.id":ObjectId(group)})
+                for institution in institutions.split(" "):
+                    filter_list.append({"affiliations.id":ObjectId(institution)})
+                cursor=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
+                cursor_citations=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
+                cursor_products=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
+            elif institutions:
+                filter_list=[]
+                for institution in institutions.split(" "):
+                    filter_list.append({"affiliations.id":ObjectId(institution)})
+                cursor=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
+                cursor_citations=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
+                cursor_products=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
+            elif groups:
+                filter_list=[]
+                for group in groups.split(" "):
+                    filter_list.append({"affiliations.id":ObjectId(group)})
+                cursor=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
+                cursor_citations=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
+                cursor_products=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
+            else:
+                cursor=self.colav_db["authors"].find({"subjects.id":ObjectId(idx)})
+                cursor_citations=self.colav_db["authors"].find({"subjects.id":ObjectId(idx)})
+                cursor_products=self.colav_db["authors"].find({"subjects.id":ObjectId(idx)})
 
             total_results = self.colav_db["authors"].count_documents({"subjects.id":ObjectId(idx)})
 
@@ -544,34 +564,59 @@ class SubjectsApp(sdsPluginBase):
                     return None
 
             skip = (max_results*(page-1))
-
-            pipeline.extend([{"$skip":skip},{"$limit":max_results}])
-
-            result= self.colav_db["documents"].aggregate(pipeline)
         
-            entry = []
+            entry = {
+                "authors":[],#id,name,affiliations,subjects with id
+                "authors_citations_count":[],
+                "authors_production_count":[]
+            } 
 
-            for reg in result:
+            if sort=="citations" and direction=="ascending":
+                cursor.sort([("citations_count",ASCENDING)])
+            if sort=="citations" and direction=="descending":
+                cursor.sort([("citations_count",DESCENDING)])
+            if sort=="production" and direction=="ascending":
+                cursor.sort([("products_count",ASCENDING)])
+            if sort=="production" and direction=="descending":
+                cursor.sort([("products_count",DESCENDING)])
+
+            cursor=cursor.skip(skip).limit(max_results)
+
+            for reg in cursor:
                 group_name = ""
                 group_id = ""
-                if "author" in reg.keys():
-                    if "affiliations" in reg["author"].keys():
-                        if len(reg["author"]["affiliations"])>0:
-                            if "branches" in reg["author"]["affiliations"][0]:
-                                for i in range(len(reg["author"]["affiliations"][0]["branches"])):    
-                                    if reg["author"]["affiliations"][0]["branches"][i]["type"]=="group":
-                                        group_name = reg["author"]["affiliations"][0]["branches"][i]["name"]
-                                        group_id =   reg["author"]["affiliations"][0]["branches"][i]["id"]    
+                institution={}
+                if "affiliations" in reg.keys():
+                    if len(reg["affiliations"])>0:
+                        institution={
+                            "name":reg["affiliations"][0]["name"], 
+                            "id":reg["affiliations"][0]["id"]
+                        }
+                        if "branches" in reg["affiliations"][0]:
+                            for i in range(len(reg["affiliations"][0]["branches"])):    
+                                if reg["affiliations"][0]["branches"][i]["type"]=="group":
+                                    group_name = reg["affiliations"][0]["branches"][i]["name"]
+                                    group_id =   reg["affiliations"][0]["branches"][i]["id"]    
 
-                            entry.append({
-                                "id":reg["_id"],
-                                "name":reg["author"]["full_name"],
-                                "papers_count":reg["papers_count"],
-                                "citations_count":reg["citations_count"],
-                                "affiliation":{"institution":{"name":reg["author"]["affiliations"][0]["name"], 
-                                                    "id":reg["author"]["affiliations"][0]["id"]},
-                                            "group":{"name":group_name, "id":group_id}}
-                            })
+                entry["authors"].append({
+                    "id":reg["_id"],
+                    "name":reg["full_name"],
+                    "products_count":reg["products_count"],
+                    "citations_count":reg["citations_count"],
+                    "affiliation":{"institution":institution,
+                                "group":{"name":group_name, "id":group_id}}
+                })
+            
+            
+            cursor_citations.sort([("citations_count",DESCENDING)])
+            cursor_citations=cursor_citations.limit(max_results)
+            for reg in cursor_citations:
+                entry["authors_citations_count"].append({"name":reg["full_name"],"citations":reg["citations_count"]})
+
+            cursor_products.sort([("products_count",DESCENDING)])
+            cursor_products=cursor_products.limit(max_results)
+            for reg in cursor_products:
+                entry["authors_production_count"].append({"name":reg["full_name"],"production'":reg["products_count"]})
             
         return {"total":total_results,"page":page,"count":len(entry),"data":entry}
 
@@ -627,8 +672,12 @@ class SubjectsApp(sdsPluginBase):
             idx = self.request.args.get('id')
             max_results=self.request.args.get('max')
             page=self.request.args.get('page')
- 
-            authors=self.get_authors(idx,page,max_results)
+            sort=self.request.args.get('sort')
+            institutions=self.request.args.get('institutions')
+            groups=self.request.args.get('groups')
+            start_year=self.request.args.get('start_year')
+            end_year=self.request.args.get('end_year')
+            authors=self.get_authors(idx,page,max_results,start_year,end_year,groups,institutions,sort,"descending")
             if authors:
                 response = self.app.response_class(
                 response=self.json.dumps(authors),

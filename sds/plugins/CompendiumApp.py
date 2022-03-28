@@ -18,20 +18,41 @@ class CompendiumApp(sdsPluginBase):
         return {"data":""}
 
 
-    def get_groups(self,limit=None):
-        if limit:
-            limit=int(limit)
+    def get_groups(self,page=1,max_results=100,sort="citations",direction="descending"):
+        if not page:
+            page=1
         else:
-            limit=10
+            try:
+                page=int(page)
+            except:
+                print("Could not convert end page to int")
+                return None
+        if not max_results:
+            max_results=100
+        else:
+            try:
+                max_results=int(max_results)
+            except:
+                print("Could not convert end max to int")
+                return None
 
-        pipeline=[
-            {"$match":{"type":"group"}},
-            {"$project":{"name":1,"relations":1,"products_count":1,"citations_count":1,"products_by_year":1,"subjects":1}},
-            {"$sort":{"products_count":-1}},
-            {"$limit":limit}
-        ]
-        products_by_year=[]
-        for reg in self.colav_db["branches"].aggregate(pipeline):
+        cursor=self.colav_db["branches"].find({"type":"group"},{"name":1,"relations":1,"products_count":1,"citations_count":1,"products_by_year":1,"subjects":1})
+        
+        if sort=="citations" and direction=="ascending":
+            cursor.sort([("citations_count",ASCENDING)])
+        if sort=="citations" and direction=="descending":
+            cursor.sort([("citations_count",DESCENDING)])
+        if sort=="production" and direction=="ascending":
+            cursor.sort([("products_count",ASCENDING)])
+        if sort=="production" and direction=="descending":
+            cursor.sort([("products_count",DESCENDING)])
+
+        skip = (max_results*(page-1))
+
+        cursor=cursor.skip(skip).limit(max_results)
+
+        data=[]
+        for reg in cursor:
             entry={
                 "id":reg["_id"],
                 "name":reg["name"],
@@ -43,37 +64,35 @@ class CompendiumApp(sdsPluginBase):
                         "id":reg["relations"][0]["id"]
                     }
                 },
-                "products_by_year":reg["products_by_year"] if "products_by_year" in reg.keys() else [],
-                "subjects":reg["subjects"][:limit] if len(reg["subjects"])>=limit else reg["subjects"]
+                "plot":[],
+                "subjects":reg["subjects"][:10] if len(reg["subjects"])>=10 else reg["subjects"]
             }
-            products_by_year.append(entry)
+            year_index={}
+            print(reg["_id"])
+            for i,prod in enumerate(reg["products_by_year"]):
+                print(prod)
+                entry["plot"].append({
+                    "year":prod["year"],
+                    "products":prod["value"],
+                    "citations":0
+                })
+                year_index[prod["year"]]=i
+            if "citations_by_year" in reg.keys():
+                for cit in reg["citations_by_year"]:
+                    if cit["year"] in year_index.keys():
+                        entry["plot"][i]["citations"]=cit["value"]
+                    else:
+                        entry["plot"].append({
+                            "year":cit["year"],
+                            "products":0,
+                            "citations":cit["value"]
+                        })
+            entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
+            if "subjects" in reg.keys():
+                entry["subjects"]=reg["subjects"][:10] if len(reg["subjects"])>=10 else reg["subjects"]
+            data.append(entry)
 
-
-        pipeline=[
-            {"$match":{"type":"group"}},
-            {"$project":{"name":1,"relations":1,"citations_count":1,"products_count":1,"citations_by_year":1,"subjects":1}},
-            {"$sort":{"citations_count":-1}},
-            {"$limit":limit}
-        ]
-        citations_by_year=[]
-        for reg in self.colav_db["branches"].aggregate(pipeline):
-            entry={
-                "id":reg["_id"],
-                "name":reg["name"],
-                "products_count":reg["products_count"],
-                "citations_count":reg["citations_count"],
-                "affiliations":{
-                    "institution":{
-                        "name":reg["relations"][0]["name"],
-                        "id":reg["relations"][0]["id"]
-                    }
-                },
-                "citations_by_year":reg["citations_by_year"] if "citations_by_year" in reg.keys() else [],
-                "subjects":reg["subjects"][:limit] if len(reg["subjects"])>=5 else reg["subjects"]
-            }
-            citations_by_year.append(entry)
-
-        return {"data":{"products_by_year":products_by_year,"citations_by_year":citations_by_year}}
+        return {"data":data}
 
 
     def get_authors(self):
@@ -81,75 +100,74 @@ class CompendiumApp(sdsPluginBase):
         return {"data":""}
 
 
-    def get_institutions(self,limit=None):
-        if limit:
-            limit=int(limit)
+    def get_institutions(self,page=1,max_results=10,sort="citations",direction="descending"):
+        if not page:
+            page=1
         else:
-            limit=10
+            try:
+                page=int(page)
+            except:
+                print("Could not convert end page to int")
+                return None
+        if not max_results:
+            max_results=100
+        else:
+            try:
+                max_results=int(max_results)
+            except:
+                print("Could not convert end max to int")
+                return None
 
-        pipeline=[
-            {"$match":{"type":"group"}},
-            {"$project":{"name":1,"relations":1,"products_count":1,"citations_count":1,"products_by_year":1,"subjects":1}},
-            {"$sort":{"products_count":-1}},
-            {"$limit":limit}
-        ]
-        products_by_year=[]
-        products_subjects=[]
-        for reg in self.colav_db["branches"].aggregate(pipeline):
+        cursor=self.colav_db["institutions"].find({},{"name":1,"products_count":1,"citations_count":1,"products_by_year":1,"subjects":1})
+        
+        if sort=="citations" and direction=="ascending":
+            cursor.sort([("citations_count",ASCENDING)])
+        if sort=="citations" and direction=="descending":
+            cursor.sort([("citations_count",DESCENDING)])
+        if sort=="production" and direction=="ascending":
+            cursor.sort([("products_count",ASCENDING)])
+        if sort=="production" and direction=="descending":
+            cursor.sort([("products_count",DESCENDING)])
+        
+        skip = (max_results*(page-1))
+
+        cursor=cursor.skip(skip).limit(max_results)
+
+        data=[]
+        for reg in cursor:
             entry={
                 "id":reg["_id"],
                 "name":reg["name"],
                 "products_count":reg["products_count"],
                 "citations_count":reg["citations_count"],
-                "affiliations":{
-                    "institution":{
-                        "name":reg["relations"][0]["name"],
-                        "id":reg["relations"][0]["id"]
-                    }
-                },
-                "subjects":reg["subjects"][:limit] if len(reg["subjects"])>=limit else reg["subjects"]
+                "plot":[],
+                "subjects":[]
             }
-            products_subjects.append(entry)
-            for prod in reg["products_by_year"]:
-                products_by_year.append({
+            year_index={}
+            for i,prod in enumerate(reg["products_by_year"]):
+                print(prod)
+                entry["plot"].append({
                     "year":prod["year"],
-                    "name":reg["name"],
-                    "value":prod["value"]
+                    "products":prod["value"],
+                    "citations":0
                 })
+                year_index[prod["year"]]=i
+            if "citations_by_year" in reg.keys():
+                for cit in reg["citations_by_year"]:
+                    if cit["year"] in year_index.keys():
+                        entry["plot"][i]["citations"]=cit["value"]
+                    else:
+                        entry["plot"].append({
+                            "year":cit["year"],
+                            "products":0,
+                            "citations":cit["value"]
+                        })
+            entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
+            if "subjects" in reg.keys():
+                entry["subjects"]=reg["subjects"][:10] if len(reg["subjects"])>=10 else reg["subjects"]
+            data.append(entry)
 
-
-        pipeline=[
-            {"$match":{"type":"group"}},
-            {"$project":{"name":1,"relations":1,"citations_count":1,"products_count":1,"citations_by_year":1,"subjects":1}},
-            {"$sort":{"citations_count":-1}},
-            {"$limit":limit}
-        ]
-        citations_by_year=[]
-        citations_subjects=[]
-        for reg in self.colav_db["branches"].aggregate(pipeline):
-            entry={
-                "id":reg["_id"],
-                "name":reg["name"],
-                "products_count":reg["products_count"],
-                "citations_count":reg["citations_count"],
-                "affiliations":{
-                    "institution":{
-                        "name":reg["relations"][0]["name"],
-                        "id":reg["relations"][0]["id"]
-                    }
-                },
-                "subjects":reg["subjects"][:limit] if len(reg["subjects"])>=limit else reg["subjects"]
-            }
-            citations_subjects.append(entry)
-            for cit in reg["citations_by_year"]:
-                citations_by_year.append({
-                    "year":cit["year"],
-                    "name":reg["name"],
-                    "value":cit["value"]
-                })
-
-        return {"data":{"products_by_year":products_by_year,"citations_by_year":citations_by_year,
-                        "citations_subjects":citations_subjects,"products_subjects":products_subjects}}
+        return {"data":data}
             
 
     @endpoint('/app/compendium', methods=['GET'])
@@ -161,8 +179,10 @@ class CompendiumApp(sdsPluginBase):
 
 
         if data=="groups":
-            limit=self.request.args.get('limit')
-            groups=self.get_groups(limit=limit)
+            max_results=self.request.args.get('max')
+            page=self.request.args.get('page')
+            sort=self.request.args.get('sort')
+            groups=self.get_groups(page=page,max_results=max_results,sort=sort)
             if groups:    
                 response = self.app.response_class(
                 response=self.json.dumps(groups),
@@ -176,11 +196,13 @@ class CompendiumApp(sdsPluginBase):
                 mimetype='application/json'
             )
         elif data=="institutions":
-            limit=self.request.args.get('limit')
-            groups=self.get_institutions(limit=limit)
-            if groups:    
+            max_results=self.request.args.get('max')
+            page=self.request.args.get('page')
+            sort=self.request.args.get('sort')
+            institutions=self.get_institutions(page=page,max_results=max_results,sort=sort)
+            if institutions:    
                 response = self.app.response_class(
-                response=self.json.dumps(groups),
+                response=self.json.dumps(institutions),
                 status=200,
                 mimetype='application/json'
                 )
