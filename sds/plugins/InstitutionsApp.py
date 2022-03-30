@@ -14,7 +14,7 @@ class InstitutionsApp(sdsPluginBase):
     def get_info(self,idx):
         initial_year=0
         final_year = 0
-        institution = self.colav_db['institutions'].find_one({"_id":ObjectId(idx)})
+        institution = self.colav_db['affiliations'].find_one({"_id":ObjectId(idx)})
         if institution:
             entry={"id":institution["_id"],
                 "name":institution["name"],
@@ -134,7 +134,7 @@ class InstitutionsApp(sdsPluginBase):
             {"$unwind":"$citers.authors"},
             {"$project":{"citers.authors.affiliations":1}},
             {"$unwind":"$citers.authors.affiliations"},
-            {"$lookup":{"from":"institutions","foreignField":"_id","localField":"citers.authors.affiliations.id","as":"affiliation"}},
+            {"$lookup":{"from":"affiliations","foreignField":"_id","localField":"citers.authors.affiliations.id","as":"affiliation"}},
             {"$project":{"affiliation.addresses.country":1,"affiliation.addresses.country_code":1}},
             {"$unwind":"$affiliation"},{"$group":{"_id":"$affiliation.addresses.country_code","count":{"$sum":1},
              "country": {"$first": "$affiliation.addresses.country"}}},{"$project": {"country": 1,"_id":1,"count": 1, "log_count": {"$ln": "$count"}}},

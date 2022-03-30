@@ -29,7 +29,7 @@ class SubjectsApp(sdsPluginBase):
                 result=list(result)
                 if len(result)>0:
                     final_year=result[0]["year_published"]
-            groups=list(self.colav_db["branches"].find({"type":"group","subjects.id":ObjectId(idx)},{"name":1}))
+            groups=list(self.colav_db["affiliations"].find({"type":"group","subjects.id":ObjectId(idx)},{"name":1}))
             institutions=list(self.colav_db["institutions"].find({"subjects.id":ObjectId(idx)},{"name":1}))
 
         filters={
@@ -315,10 +315,10 @@ class SubjectsApp(sdsPluginBase):
                     if aff_db:
                         aff_entry={"name":aff_db["name"],"id":aff_db["_id"]}
                     branches=[]
-                    if "branches" in aff.keys():
-                        for branch in aff["branches"]:
-                            if "id" in branch.keys():
-                                branch_db=self.colav_db["branches"].find_one({"_id":branch["id"]})
+                    if "type" in aff.keys():
+                        if aff["type"]=="group":
+                            if "id" in aff["type"].keys():
+                                branch_db=self.colav_db["affilations"].find_one({"_id":branch["id"]})
                                 if branch_db and branch_db["type"] != "department" and branch_db["type"]!="faculty":
                                     group_entry= ({"name":branch_db["name"],"type":branch_db["type"],"id":branch_db["_id"]})
                                     affiliations.append(group_entry)
@@ -478,7 +478,7 @@ class SubjectsApp(sdsPluginBase):
     
     def get_groups(self,idx=None,page=1,max_results=100,sort="citations",direction="descending"):
         
-        total_results = self.colav_db["branches"].count_documents({"type":"group","subjects.id":ObjectId(idx)})
+        total_results = self.colav_db["affiliations"].count_documents({"type":"group","subjects.id":ObjectId(idx)})
 
         if not page:
             page=1
@@ -499,7 +499,7 @@ class SubjectsApp(sdsPluginBase):
 
         skip = (max_results*(page-1))
 
-        cursor=self.colav_db["branches"].find({"type":"group","subjects.id":ObjectId(idx)})
+        cursor=self.colav_db["affiliations"].find({"type":"group","subjects.id":ObjectId(idx)})
 
         cursor=cursor.skip(skip).limit(max_results)
 
@@ -515,53 +515,64 @@ class SubjectsApp(sdsPluginBase):
         return {"total":total_results,"page":page,"count":len(entry),"data":entry}
 
     def get_authors(self,idx=None,page=1,max_results=100,start_year=None,end_year=None,groups=[],institutions=[],sort="citations",direction="descending"):
+        query={}
+        filter_list=[]
+
+        if not page:
+            page=1
+        else:
+            try:
+                page=int(page)
+            except:
+                print("Could not convert end page to int")
+                return None
+        if not max_results:
+            max_results=100
+        else:
+            try:
+                max_results=int(max_results)
+            except:
+                print("Could not convert end max to int")
+                return None
+
+        if start_year:
+            try:
+                start_year=int(start_year)
+            except:
+                print("Could not convert start year to int")
+                return None
+        if end_year:
+            try:
+                end_year=int(end_year)
+            except:
+                print("Could not convert end year to int")
+                return None
         if idx:
-            if groups and institutions:
-                filter_list=[]
-                for group in groups.split(" "):
-                    filter_list.append({"affiliations.id":ObjectId(group)})
-                for institution in institutions.split(" "):
-                    filter_list.append({"affiliations.id":ObjectId(institution)})
-                cursor=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
-                cursor_citations=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
-                cursor_products=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
-            elif institutions:
+            query={"subjects.id":ObjectId(idx)}
+                
+            if institutions:
                 filter_list=[]
                 for institution in institutions.split(" "):
                     filter_list.append({"affiliations.id":ObjectId(institution)})
-                cursor=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
-                cursor_citations=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
-                cursor_products=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
-            elif groups:
-                filter_list=[]
+            if groups:
                 for group in groups.split(" "):
                     filter_list.append({"affiliations.id":ObjectId(group)})
-                cursor=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
-                cursor_citations=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
-                cursor_products=self.colav_db["authors"].find({"$or":filter_list,"subjects.id":ObjectId(idx)})
-            else:
-                cursor=self.colav_db["authors"].find({"subjects.id":ObjectId(idx)})
-                cursor_citations=self.colav_db["authors"].find({"subjects.id":ObjectId(idx)})
-                cursor_products=self.colav_db["authors"].find({"subjects.id":ObjectId(idx)})
+            if start_year:
+                query["subjects_by-year"]={"$gte":start_year}
+            if end_year:
+                if "subjects_by_year" in query.keys():
+                    query["year_published"]["$lte"]=end_year
+                else:
+                    query["year_published"]={"$lte":end_year}
 
-            total_results = self.colav_db["authors"].count_documents({"subjects.id":ObjectId(idx)})
+            if len(filter_list)>0:
+                query["$or"]=filter_list
 
-            if not page:
-                page=1
-            else:
-                try:
-                    page=int(page)
-                except:
-                    print("Could not convert end page to int")
-                    return None
-            if not max_results:
-                max_results=100
-            else:
-                try:
-                    max_results=int(max_results)
-                except:
-                    print("Could not convert end max to int")
-                    return None
+            cursor=self.colav_db["authors"].find(query)
+            cursor_citations=self.colav_db["authors"].find(query)
+            cursor_products=self.colav_db["authors"].find(query)
+
+            total_results = self.colav_db["authors"].count_documents(query)
 
             skip = (max_results*(page-1))
         
@@ -587,16 +598,17 @@ class SubjectsApp(sdsPluginBase):
                 group_id = ""
                 institution={}
                 if "affiliations" in reg.keys():
-                    if len(reg["affiliations"])>0:
-                        institution={
-                            "name":reg["affiliations"][0]["name"], 
-                            "id":reg["affiliations"][0]["id"]
-                        }
-                        if "branches" in reg["affiliations"][0]:
-                            for i in range(len(reg["affiliations"][0]["branches"])):    
-                                if reg["affiliations"][0]["branches"][i]["type"]=="group":
-                                    group_name = reg["affiliations"][0]["branches"][i]["name"]
-                                    group_id =   reg["affiliations"][0]["branches"][i]["id"]    
+                    for aff in reg["affiliations"]:
+                        if "type" in aff.keys():
+                            if aff["type"]=="group":
+                                group_name=aff["name"]
+                                group_id=str(aff["id"])
+                        else:
+                            institution={
+                            "name":aff["name"], 
+                            "id":aff["id"]
+                            }
+    
 
                 entry["authors"].append({
                     "id":reg["_id"],

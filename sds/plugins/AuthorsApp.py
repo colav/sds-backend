@@ -86,11 +86,6 @@ class AuthorsApp(sdsPluginBase):
                         #entry["country"]=inst_db["addresses"][0]["country"]
                         entry["logo"]=inst_db["logo_url"]
 
-                    
-
-
-
-
             sources=[]
             for ext in author["external_ids"]:
 

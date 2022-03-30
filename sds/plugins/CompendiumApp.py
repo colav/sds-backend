@@ -36,7 +36,10 @@ class CompendiumApp(sdsPluginBase):
                 print("Could not convert end max to int")
                 return None
 
-        cursor=self.colav_db["branches"].find({"type":"group"},{"name":1,"relations":1,"products_count":1,"citations_count":1,"products_by_year":1,"subjects":1})
+        search_dict={"type":"group"}
+        var_dict={"name":1,"relations":1,"products_count":1,"citations_count":1,"products_by_year":1,"subjects":1}
+        total=self.colav_db["branches"].count_documents(search_dict)
+        cursor=self.colav_db["branches"].find(search_dict,var_dict)
         
         if sort=="citations" and direction=="ascending":
             cursor.sort([("citations_count",ASCENDING)])
@@ -68,9 +71,9 @@ class CompendiumApp(sdsPluginBase):
                 "subjects":reg["subjects"][:10] if len(reg["subjects"])>=10 else reg["subjects"]
             }
             year_index={}
-            print(reg["_id"])
+
             for i,prod in enumerate(reg["products_by_year"]):
-                print(prod)
+                
                 entry["plot"].append({
                     "year":prod["year"],
                     "products":prod["value"],
@@ -92,7 +95,7 @@ class CompendiumApp(sdsPluginBase):
                 entry["subjects"]=reg["subjects"][:10] if len(reg["subjects"])>=10 else reg["subjects"]
             data.append(entry)
 
-        return {"data":data}
+        return {"data":data,"page":page,"count":max_results,"total":total}
 
 
     def get_authors(self):
@@ -118,7 +121,10 @@ class CompendiumApp(sdsPluginBase):
                 print("Could not convert end max to int")
                 return None
 
-        cursor=self.colav_db["institutions"].find({},{"name":1,"products_count":1,"citations_count":1,"products_by_year":1,"subjects":1})
+        search_dict={}
+        var_dict={"name":1,"products_count":1,"citations_count":1,"products_by_year":1,"subjects":1}
+        total=self.colav_db["institutions"].count_documents(search_dict)
+        cursor=self.colav_db["institutions"].find(search_dict,)
         
         if sort=="citations" and direction=="ascending":
             cursor.sort([("citations_count",ASCENDING)])
@@ -167,7 +173,7 @@ class CompendiumApp(sdsPluginBase):
                 entry["subjects"]=reg["subjects"][:10] if len(reg["subjects"])>=10 else reg["subjects"]
             data.append(entry)
 
-        return {"data":data}
+        return {"data":data,"page":page,"count":max_results,"total":total}
             
 
     @endpoint('/app/compendium', methods=['GET'])
