@@ -38,8 +38,8 @@ class CompendiumApp(sdsPluginBase):
 
         search_dict={"type":"group"}
         var_dict={"name":1,"relations":1,"products_count":1,"citations_count":1,"products_by_year":1,"subjects":1}
-        total=self.colav_db["branches"].count_documents(search_dict)
-        cursor=self.colav_db["branches"].find(search_dict,var_dict)
+        total=self.colav_db["affiliations"].count_documents(search_dict)
+        cursor=self.colav_db["affiliations"].find(search_dict,var_dict)
         
         if sort=="citations" and direction=="ascending":
             cursor.sort([("citations_count",ASCENDING)])
@@ -123,8 +123,8 @@ class CompendiumApp(sdsPluginBase):
 
         search_dict={}
         var_dict={"name":1,"products_count":1,"citations_count":1,"products_by_year":1,"subjects":1}
-        total=self.colav_db["institutions"].count_documents(search_dict)
-        cursor=self.colav_db["institutions"].find(search_dict,)
+        total=self.colav_db["affiliations"].count_documents(search_dict)
+        cursor=self.colav_db["affiliations"].find(search_dict,)
         
         if sort=="citations" and direction=="ascending":
             cursor.sort([("citations_count",ASCENDING)])
