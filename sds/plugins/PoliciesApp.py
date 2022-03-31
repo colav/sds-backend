@@ -283,17 +283,13 @@ class PoliciesApp(sdsPluginBase):
                 for aff in author["affiliations"]:
                     aff_entry={}
                     group_entry={}
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
                     if aff_db:
                         aff_entry={"name":aff_db["name"],"id":aff_db["_id"]}
-                    branches=[]
-                    if "branches" in aff.keys():
-                        for branch in aff["branches"]:
-                            if "id" in branch.keys():
-                                branch_db=self.colav_db["branches"].find_one({"_id":branch["id"]})
-                                if branch_db and branch_db["type"] != "department" and branch_db["type"]!="faculty":
-                                    group_entry= ({"name":branch_db["name"],"type":branch_db["type"],"id":branch_db["_id"]})
-                                    affiliations.append(group_entry)
+                    if "type" in aff.keys():
+                        if aff["type"]=="group":
+                            group_entry= ({"name":aff["name"],"type":aff["type"],"id":aff["_id"]})
+                            affiliations.append(group_entry)
 
                     affiliations.append(aff_entry)
                 au_entry["affiliations"]=affiliations
@@ -383,7 +379,7 @@ class PoliciesApp(sdsPluginBase):
                 affiliations=[]
                 for aff in author["affiliations"]:
                     aff_entry={}
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
                     if aff_db:
                         aff_entry={"name":aff_db["name"],"id":aff_db["_id"]}
                     
@@ -468,7 +464,7 @@ class PoliciesApp(sdsPluginBase):
     
     def get_institutions(self,idx=None,page=1,max_results=100,sort="citations",direction="descending"):
         
-        total_results = self.colav_db["institutions"].count_documents({"policies.id":ObjectId(idx)})
+        total_results = self.colav_db["affiliations"].count_documents({"policies.id":ObjectId(idx)})
 
         if not page:
             page=1
@@ -489,7 +485,7 @@ class PoliciesApp(sdsPluginBase):
 
         skip = (max_results*(page-1))
 
-        cursor=self.colav_db["institutions"].find({"policies.id":ObjectId(idx)})
+        cursor=self.colav_db["affiliations"].find({"policies.id":ObjectId(idx)})
 
         cursor=cursor.skip(skip).limit(max_results)
 
@@ -506,7 +502,7 @@ class PoliciesApp(sdsPluginBase):
     
     def get_groups(self,idx=None,page=1,max_results=100,sort="citations",direction="descending"):
         
-        total_results = self.colav_db["branches"].count_documents({"type":"group","policies.id":ObjectId(idx)})
+        total_results = self.colav_db["affiliations"].count_documents({"type":"group","policies.id":ObjectId(idx)})
 
         if not page:
             page=1
@@ -527,7 +523,7 @@ class PoliciesApp(sdsPluginBase):
 
         skip = (max_results*(page-1))
 
-        cursor=self.colav_db["branches"].find({"type":"group","policies.id":ObjectId(idx)})
+        cursor=self.colav_db["affiliations"].find({"type":"group","policies.id":ObjectId(idx)})
 
         cursor=cursor.skip(skip).limit(max_results)
 
@@ -554,7 +550,7 @@ class PoliciesApp(sdsPluginBase):
                 {"$group":{"_id":"$authors.id","papers_count":{"$sum":1},"citations_count":{"$sum":"$citations_count"},"author":{"$first":"$authors"}}},
                 {"$sort":{"citations_count":-1}},
                 {"$project":{"author.id":1,"author.full_name":1,"author.affiliations.name":1,"author.affiliations.id":1,
-                    "author.affiliations.branches.name":1,"author.affiliations.branches.type":1,"author.affiliations.branches.id":1,
+                    "author.affiliations.name":1,"author.affiliations.type":1,"author.affiliations.id":1,
                     "papers_count":1,"citations_count":1}}
             ])
 
@@ -588,22 +584,26 @@ class PoliciesApp(sdsPluginBase):
             for reg in result:
                 group_name = ""
                 group_id = ""
+                inst_name=""
+                inst_id=""
                 if "author" in reg.keys():
                     if "affiliations" in reg["author"].keys():
                         if len(reg["author"]["affiliations"])>0:
-                            if "branches" in reg["author"]["affiliations"][0]:
-                                for i in range(len(reg["author"]["affiliations"][0]["branches"])):    
-                                    if reg["author"]["affiliations"][0]["branches"][i]["type"]=="group":
-                                        group_name = reg["author"]["affiliations"][0]["branches"][i]["name"]
-                                        group_id =   reg["author"]["affiliations"][0]["branches"][i]["id"]    
+                            for aff in reg["author"]["affiliations"]:
+                                if aff["type"]=="group":
+                                    group_name = aff["name"]
+                                    group_id =   aff["id"]
+                                else:
+                                    inst_name=aff["name"]
+                                    inst_id=aff["id"]  
 
                             entry.append({
                                 "id":reg["_id"],
                                 "name":reg["author"]["full_name"],
                                 "papers_count":reg["papers_count"],
                                 "citations_count":reg["citations_count"],
-                                "affiliation":{"institution":{"name":reg["author"]["affiliations"][0]["name"], 
-                                                    "id":reg["author"]["affiliations"][0]["id"]},
+                                "affiliation":{"institution":{"name":inst_name, 
+                                                    "id":inst_id},
                                             "group":{"name":group_name, "id":group_id}}
                             })
             

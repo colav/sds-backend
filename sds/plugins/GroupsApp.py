@@ -15,12 +15,12 @@ class GroupsApp(sdsPluginBase):
         initial_year=0
         final_year = 0
         
-        result=self.colav_db['documents'].find({"authors.affiliations.branches.id":ObjectId(idx)},{"year_published":1}).sort([("year_published",ASCENDING)]).limit(1)
+        result=self.colav_db['documents'].find({"authors.affiliations.id":ObjectId(idx)},{"year_published":1}).sort([("year_published",ASCENDING)]).limit(1)
         if result:
             result=list(result)
             if len(result)>0:
                 initial_year=result[0]["year_published"]
-        result=self.colav_db['documents'].find({"authors.affiliations.branches.id":ObjectId(idx)},{"year_published":1}).sort([("year_published",DESCENDING)]).limit(1)
+        result=self.colav_db['documents'].find({"authors.affiliations.id":ObjectId(idx)},{"year_published":1}).sort([("year_published",DESCENDING)]).limit(1)
         if result:
             result=list(result)
             if len(result)>0:
@@ -31,7 +31,7 @@ class GroupsApp(sdsPluginBase):
             "end_year":final_year if final_year!=0 else ""
         }
 
-        group = self.colav_db['branches'].find_one({"type":"group","_id":ObjectId(idx)})
+        group = self.colav_db['affiliations'].find_one({"type":"group","_id":ObjectId(idx)})
         if group:
             entry={"id":group["_id"],
                 "name":group["name"],
@@ -73,7 +73,7 @@ class GroupsApp(sdsPluginBase):
                     inst_id=rel["id"]
                     break
             if inst_id:
-                inst=self.colav_db['institutions'].find_one({"_id":inst_id})
+                inst=self.colav_db['affiliations'].find_one({"_id":inst_id})
                 if inst:
                     entry["affiliation"]={"institution":{"name":inst["name"],"id":inst_id,"logo":inst["logo_url"]}}
 
@@ -111,7 +111,7 @@ class GroupsApp(sdsPluginBase):
 
 
         pipeline=[
-            {"$match":{"authors.affiliations.branches.id":ObjectId(idx)}}
+            {"$match":{"authors.affiliations.id":ObjectId(idx)}}
         ]
 
 
@@ -153,7 +153,7 @@ class GroupsApp(sdsPluginBase):
             {"$unwind":"$citers.authors"},
             {"$project":{"citers.authors.affiliations":1}},
             {"$unwind":"$citers.authors.affiliations"},
-            {"$lookup":{"from":"institutions","foreignField":"_id","localField":"citers.authors.affiliations.id","as":"affiliation"}},
+            {"$lookup":{"from":"affiliations","foreignField":"_id","localField":"citers.authors.affiliations.id","as":"affiliation"}},
             {"$project":{"affiliation.addresses.country":1,"affiliation.addresses.country_code":1}},
             {"$unwind":"$affiliation"},{"$group":{"_id":"$affiliation.addresses.country_code","count":{"$sum":1},
              "country": {"$first": "$affiliation.addresses.country"}}},{"$project": {"country": 1,"_id":1,"count": 1, "log_count": {"$ln": "$count"}}},
@@ -177,21 +177,21 @@ class GroupsApp(sdsPluginBase):
         if idx:
 
             pipeline=[
-                {"$match":{"authors.affiliations.branches.id":ObjectId(idx)}}
+                {"$match":{"authors.affiliations.id":ObjectId(idx)}}
             ]
 
             pipeline.extend([
 
                 {"$unwind":"$authors"},
-                {"$match":{"authors.affiliations.branches.id":ObjectId(idx)}},
+                {"$match":{"authors.affiliations.id":ObjectId(idx)}},
                 {"$group":{"_id":"$authors.id","papers_count":{"$sum":1},"citations_count":{"$sum":"$citations_count"},"author":{"$first":"$authors"}}},
                 {"$sort":{"citations_count":-1}},
                 {"$project":{"_id":1,"author.full_name":1,"author.affiliations.name":1,"author.affiliations.id":1,
-                    "author.affiliations.branches.name":1,"author.affiliations.branches.type":1,"author.affiliations.branches.id":1,
+                    "author.affiliations.name":1,"author.affiliations.type":1,"author.affiliations.id":1,
                     "papers_count":1,"citations_count":1}}
             ])
 
-            total_results = self.colav_db["authors"].count_documents({"branches.id":ObjectId(idx)})
+            total_results = self.colav_db["authors"].count_documents({"affiliations.id":ObjectId(idx)})
 
             if not page:
                 page=1
@@ -215,33 +215,38 @@ class GroupsApp(sdsPluginBase):
 
             pipeline.extend([{"$skip":skip},{"$limit":max_results}])
 
-            cursor=self.colav_db["authors"].find({"branches.id":ObjectId(idx)},
-                                                {"full_name":1,"affiliations":1,"branches":1,"citations_count":1,"products_count":1})
-            cursor=cursor.skip(skip).limit(max_results)
+            cursor=self.colav_db["authors"].find({"affiliations.id":ObjectId(idx)},
+                                                {"full_name":1,"affiliations":1,"citations_count":1,"products_count":1})
 
             if sort=="citations" and direction=="ascending":
                 cursor.sort([("citations_count",ASCENDING)])
             if sort=="citations" and direction=="descending":
                 cursor.sort([("citations_count",DESCENDING)])
 
+            cursor=cursor.skip(skip).limit(max_results)
+
             entry = []
             for reg in cursor:
-                if "branches" in reg.keys():
-                    for i in range(len(reg["branches"])):    
-                        if reg["branches"][i]["type"]=="group":
-                            group_name = reg["branches"][i]["name"]
-                            group_id =   reg["branches"][i]["id"]
-                else:
-                    group_name=""
-                    group_id=""
+                group_name=""
+                group_id=""
+                inst_name=""
+                inst_id=""
+                if len(reg["affiliations"]>0):
+                    for aff in reg["affiliations"]:
+                        if aff["type"]=="group":
+                            group_name = aff["name"]
+                            group_id = aff["id"]
+                        else:
+                            inst_name=aff["name"]
+                            inst_id=aff["id"]
         
                 entry.append({
                     "id":reg["_id"],
                     "name":reg["full_name"],
                     "papers_count":reg["products_count"],
                     "citations_count":reg["citations_count"],
-                    "affiliation":{"institution":{"name":reg["affiliations"][0]["name"], 
-                                        "id":reg["affiliations"][0]["id"]},
+                    "affiliation":{"institution":{"name":inst_name, 
+                                        "id":inst_id},
                                    "group":{"name":group_name, "id":group_id}}
                 })
             
@@ -273,7 +278,7 @@ class GroupsApp(sdsPluginBase):
                 print("Could not convert end year to int")
                 return None
         if idx:
-            result=self.colav_db["branches"].find_one({"_id":ObjectId(idx)})
+            result=self.colav_db["affiliations"].find_one({"_id":ObjectId(idx)})
         else:
             return None
 
@@ -322,20 +327,20 @@ class GroupsApp(sdsPluginBase):
                 return None
         if idx:
             pipeline=[
-                {"$match":{"authors.affiliations.branches.id":ObjectId(idx)}}
+                {"$match":{"authors.affiliations.id":ObjectId(idx)}}
             ]
  
             if start_year and not end_year:
                 pipeline=[
-                    {"$match":{"year_published":{"$gte":start_year},"authors.affiliations.branches.id":ObjectId(idx)}}
+                    {"$match":{"year_published":{"$gte":start_year},"authors.affiliations.id":ObjectId(idx)}}
                 ]
             elif end_year and not start_year:
                 pipeline=[
-                    {"$match":{"year_published":{"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)}}
+                    {"$match":{"year_published":{"$lte":end_year},"authors.affiliations.id":ObjectId(idx)}}
                 ]
             elif start_year and end_year:
                 pipeline=[
-                    {"$match":{"year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)}}
+                    {"$match":{"year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.id":ObjectId(idx)}}
                 ]
                 
         #Meter esto en info
@@ -377,7 +382,7 @@ class GroupsApp(sdsPluginBase):
             {"$unwind":"$authors"},
             {"$group":{"_id":"$authors.affiliations.id","count":{"$sum":1}}},
             {"$unwind":"$_id"},
-            {"$lookup":{"from":"institutions","localField":"_id","foreignField":"_id","as":"affiliation"}},
+            {"$lookup":{"from":"affiliations","localField":"_id","foreignField":"_id","as":"affiliation"}},
             {"$project":{"count":1,"affiliation.addresses.country_code":1,"affiliation.addresses.country":1}},
             {"$unwind":"$affiliation"},
             {"$unwind":"$affiliation.addresses"},
@@ -512,19 +517,19 @@ class GroupsApp(sdsPluginBase):
         if idx:
 
             if start_year and not end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year},"authors.affiliations.branches.id":ObjectId(idx),
+                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year},"authors.affiliations.id":ObjectId(idx),
                     "publication_type.type":tipo})
 
             elif end_year and not start_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx),
+                cursor=self.colav_db['documents'].find({"year_published":{"$lte":end_year},"authors.affiliations.id":ObjectId(idx),
                     "publication_type.type":tipo})
 
             elif start_year and end_year:
                 cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year,"$lte":end_year},
-                    "authors.affiliations.branches.id":ObjectId(idx), "publication_type.type":tipo})
+                    "authors.affiliations.id":ObjectId(idx), "publication_type.type":tipo})
 
             else:
-                cursor=self.colav_db['documents'].find({"authors.affiliations.branches.id":ObjectId(idx),"publication_type.type":tipo})
+                cursor=self.colav_db['documents'].find({"authors.affiliations.id":ObjectId(idx),"publication_type.type":tipo})
 
         total=cursor.count()
         if not page:
@@ -568,7 +573,7 @@ class GroupsApp(sdsPluginBase):
                 affiliations=[]
                 for aff in author["affiliations"]:
                     aff_entry={}
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
                     if aff_db:
                         aff_entry={"institution":{"name":aff_db["name"],"id":aff_db["_id"]}}
                         break
@@ -616,75 +621,75 @@ class GroupsApp(sdsPluginBase):
         if idx:
 
             if start_year and not end_year:
-                venn_query={"year_published":{"$gte":start_year},"authors.affiliations.branches.id":ObjectId(idx)}
-                val=self.colav_db['documents'].count_documents({"open_access_status":"green","year_published":{"$gte":start_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                venn_query={"year_published":{"$gte":start_year},"authors.affiliations.id":ObjectId(idx)}
+                val=self.colav_db['documents'].count_documents({"open_access_status":"green","year_published":{"$gte":start_year},"authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","year_published":{"$gte":start_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","year_published":{"$gte":start_year},"authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"gold"  ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","year_published":{"$gte":start_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","year_published":{"$gte":start_year},"authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"bronze","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","year_published":{"$gte":start_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","year_published":{"$gte":start_year},"authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"closed","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","year_published":{"$gte":start_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","year_published":{"$gte":start_year},"authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"hybrid","value":val})
             elif end_year and not start_year:
-                venn_query={"year_published":{"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)}
-                val=self.colav_db['documents'].count_documents({"open_access_status":"green","year_published":{"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                venn_query={"year_published":{"$lte":end_year},"authors.affiliations.id":ObjectId(idx)}
+                val=self.colav_db['documents'].count_documents({"open_access_status":"green","year_published":{"$lte":end_year},"authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","year_published":{"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","year_published":{"$lte":end_year},"authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"gold"  ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","year_published":{"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","year_published":{"$lte":end_year},"authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"bronze","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","year_published":{"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","year_published":{"$lte":end_year},"authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"closed","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","year_published":{"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","year_published":{"$lte":end_year},"authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"hybrid","value":val})
             elif start_year and end_year:
-                venn_query={"year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)}
-                val=self.colav_db['documents'].count_documents({"open_access_status":"green","year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                venn_query={"year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.id":ObjectId(idx)}
+                val=self.colav_db['documents'].count_documents({"open_access_status":"green","year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"gold"  ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"bronze","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"closed","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"hybrid","value":val})
             else:
-                venn_query={"authors.affiliations.branches.id":ObjectId(idx)}
-                val=self.colav_db['documents'].count_documents({"open_access_status":"green","authors.affiliations.branches.id":ObjectId(idx)})
+                venn_query={"authors.affiliations.id":ObjectId(idx)}
+                val=self.colav_db['documents'].count_documents({"open_access_status":"green","authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"gold"  ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"bronze","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"closed","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","authors.affiliations.branches.id":ObjectId(idx)})
+                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","authors.affiliations.id":ObjectId(idx)})
                 if val!=0:
                     open_access.append({"type":"hybrid","value":val})
 
-        tipos = self.colav_db['documents'].distinct("publication_type.type",{"authors.affiliations.branches.id":ObjectId(idx)})
+        tipos = self.colav_db['documents'].distinct("publication_type.type",{"authors.affiliations.id":ObjectId(idx)})
 
         return {
             "open_access":open_access,
@@ -709,13 +714,13 @@ class GroupsApp(sdsPluginBase):
                 return None
         if idx:
             if start_year and not end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year},"authors.affiliations.id":ObjectId(idx)})
             elif end_year and not start_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                cursor=self.colav_db['documents'].find({"year_published":{"$lte":end_year},"authors.affiliations.id":ObjectId(idx)})
             elif start_year and end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.id":ObjectId(idx)})
             else:
-                cursor=self.colav_db['documents'].find({"authors.affiliations.branches.id":ObjectId(idx)})
+                cursor=self.colav_db['documents'].find({"authors.affiliations.id":ObjectId(idx)})
         else:
             cursor=self.colav_db['documents'].find()
 
@@ -776,7 +781,7 @@ class GroupsApp(sdsPluginBase):
             if "affiliations" in paper["authors"][0].keys():
                 if len(paper["authors"][0]["affiliations"])>0:
                     csv_text+="\t"+str(paper["authors"][0]["affiliations"][0]["id"])
-                    aff_db=self.colav_db["institutions"].find_one({"_id":paper["authors"][0]["affiliations"][0]["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":paper["authors"][0]["affiliations"][0]["id"]})
             if aff_db:
                 csv_text+="\t"+aff_db["name"]
                 country_entry=""
@@ -807,13 +812,13 @@ class GroupsApp(sdsPluginBase):
                 return None
         if idx:
             if start_year and not end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year},"authors.affiliations.id":ObjectId(idx)})
             elif end_year and not start_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                cursor=self.colav_db['documents'].find({"year_published":{"$lte":end_year},"authors.affiliations.id":ObjectId(idx)})
             elif start_year and end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.branches.id":ObjectId(idx)})
+                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.id":ObjectId(idx)})
             else:
-                cursor=self.colav_db['documents'].find({"authors.affiliations.branches.id":ObjectId(idx)})
+                cursor=self.colav_db['documents'].find({"authors.affiliations.id":ObjectId(idx)})
         else:
             cursor=self.colav_db['documents'].find()
 
@@ -844,7 +849,7 @@ class GroupsApp(sdsPluginBase):
                 affiliations=[]
                 for aff in author["affiliations"]:
                     aff_entry=aff
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
                     if aff_db:
                         aff_entry=aff_db
                     if "name_idx" in aff_entry.keys():
@@ -856,17 +861,16 @@ class GroupsApp(sdsPluginBase):
                     if "aliases" in aff_entry.keys():
                         del(aff_entry["aliases"])
                     branches=[]
-                    if "branches" in aff.keys():
-                        for branch in aff["branches"]:
-                            branch_db=self.colav_db["branches"].find_one({"_id":branch["id"]})
-                            if branch_db:
+                    if "type" in aff.keys():
+                        branch_db=self.colav_db["affiliations"].find_one({"_id":branch["id"]})
+                        if branch_db:
+                            del(branch_db["aliases"])
+                            if "addresses" in branch_db.keys():
+                                for add in branch_db["addresses"]:
+                                    del(add["geonames_city"])
+                            if "aliases" in branch_db.keys():
                                 del(branch_db["aliases"])
-                                if "addresses" in branch_db.keys():
-                                    for add in branch_db["addresses"]:
-                                        del(add["geonames_city"])
-                                if "aliases" in branch_db.keys():
-                                    del(branch_db["aliases"])
-                                branches.append(branch_db)
+                            branches.append(branch_db)
                     aff_entry["branches"]=branches
                     affiliations.append(aff_entry)
                 au_entry["affiliations"]=affiliations
