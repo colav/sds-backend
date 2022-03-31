@@ -30,7 +30,7 @@ class SubjectsApp(sdsPluginBase):
                 if len(result)>0:
                     final_year=result[0]["year_published"]
             groups=list(self.colav_db["affiliations"].find({"type":"group","subjects.id":ObjectId(idx)},{"name":1}))
-            institutions=list(self.colav_db["institutions"].find({"subjects.id":ObjectId(idx)},{"name":1}))
+            institutions=list(self.colav_db["affiliations"].find({"subjects.id":ObjectId(idx)},{"name":1}))
 
         filters={
             "start_year":initial_year if initial_year!=0 else "",
@@ -311,7 +311,7 @@ class SubjectsApp(sdsPluginBase):
                 for aff in author["affiliations"]:
                     aff_entry={}
                     group_entry={}
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
                     if aff_db:
                         aff_entry={"name":aff_db["name"],"id":aff_db["_id"]}
                     branches=[]
@@ -319,7 +319,7 @@ class SubjectsApp(sdsPluginBase):
                         if aff["type"]=="group":
                             if "id" in aff["type"].keys():
                                 branch_db=self.colav_db["affilations"].find_one({"_id":branch["id"]})
-                                if branch_db and branch_db["type"] != "department" and branch_db["type"]!="faculty":
+                                if branch_db and branch_db["type"] == "group":
                                     group_entry= ({"name":branch_db["name"],"type":branch_db["type"],"id":branch_db["_id"]})
                                     affiliations.append(group_entry)
 
@@ -411,7 +411,7 @@ class SubjectsApp(sdsPluginBase):
                 affiliations=[]
                 for aff in author["affiliations"]:
                     aff_entry={}
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
                     if aff_db:
                         aff_entry={"name":aff_db["name"],"id":aff_db["_id"]}
                     
@@ -440,7 +440,7 @@ class SubjectsApp(sdsPluginBase):
 
     def get_institutions(self,idx=None,page=1,max_results=100,sort="citations",direction="descending"):
         
-        total_results = self.colav_db["institutions"].count_documents({"subjects.id":ObjectId(idx)})
+        total_results = self.colav_db["affiliations"].count_documents({"subjects.id":ObjectId(idx)})
 
         if not page:
             page=1
@@ -461,7 +461,7 @@ class SubjectsApp(sdsPluginBase):
 
         skip = (max_results*(page-1))
 
-        cursor=self.colav_db["institutions"].find({"subjects.id":ObjectId(idx)})
+        cursor=self.colav_db["affiliations"].find({"subjects.id":ObjectId(idx)})
 
         cursor=cursor.skip(skip).limit(max_results)
 
