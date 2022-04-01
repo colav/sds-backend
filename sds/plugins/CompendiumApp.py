@@ -143,8 +143,11 @@ class CompendiumApp(sdsPluginBase):
         cursor=cursor.skip(skip).limit(max_results)
 
         data=[]
+        index=max_result*page
         for reg in cursor:
+            index+=1
             entry={
+                "index":index
                 "id":reg["_id"],
                 "name":reg["name"],
                 "products_count":reg["products_count"],
