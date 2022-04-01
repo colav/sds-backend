@@ -147,7 +147,7 @@ class CompendiumApp(sdsPluginBase):
         for reg in cursor:
             index+=1
             entry={
-                "index":index
+                "index":index,
                 "id":reg["_id"],
                 "name":reg["name"],
                 "products_count":reg["products_count"],
