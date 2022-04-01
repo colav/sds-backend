@@ -9,7 +9,7 @@ class TrendsApp(sdsPluginBase):
 
     def get_info(self):
         covid_data={
-            "id":self.colav_db["subjects"].find_one({"name":{"$regex":".*covid.*","$options":"i"}},{"_id":1}),
+            "id":self.colav_db["subjects"].find_one({"name":{"$regex":".*covid.*","$options":"i"}},{"_id":1})["_id"],
             "documents":self.colav_db["documents"].count_documents({"subjects.name":{"$regex":".*covid.*","$options":"i"}}),
             "authors":self.colav_db["authors"].count_documents({"subjects.name":{"$regex":".*covid.*","$options":"i"}}),
             "institutions":self.colav_db["affiliations"].count_documents({"subjects.name":{"$regex":".*covid.*","$options":"i"}}),
