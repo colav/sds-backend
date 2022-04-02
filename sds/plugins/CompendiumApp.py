@@ -143,7 +143,7 @@ class CompendiumApp(sdsPluginBase):
         cursor=cursor.skip(skip).limit(max_results)
 
         data=[]
-        index=max_result*(page-1)
+        index=max_results*(page-1)
         for reg in cursor:
             index+=1
             entry={

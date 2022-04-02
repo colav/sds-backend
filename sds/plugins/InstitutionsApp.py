@@ -265,7 +265,7 @@ class InstitutionsApp(sdsPluginBase):
             {"$group":{"_id":"$authors.affiliations.id","count":{"$sum":1}}},
             {"$sort":{"count":-1}},
             {"$unwind":"$_id"},
-            {"$lookup":{"from":"institutions","localField":"_id","foreignField":"_id","as":"affiliation"}},
+            {"$lookup":{"from":"affiliations","localField":"_id","foreignField":"_id","as":"affiliation"}},
             {"$project":{"count":1,"affiliation.name":1}},
             {"$unwind":"$affiliation"}
         ])
@@ -310,7 +310,7 @@ class InstitutionsApp(sdsPluginBase):
             {"$unwind":"$authors"},
             {"$group":{"_id":"$authors.affiliations.id","count":{"$sum":1}}},
             {"$unwind":"$_id"},
-            {"$lookup":{"from":"institutions","localField":"_id","foreignField":"_id","as":"affiliation"}},
+            {"$lookup":{"from":"affiliations","localField":"_id","foreignField":"_id","as":"affiliation"}},
             {"$project":{"count":1,"affiliation.addresses.country_code":1,"affiliation.addresses.country":1}},
             {"$unwind":"$affiliation"},
             {"$unwind":"$affiliation.addresses"}
@@ -463,7 +463,7 @@ class InstitutionsApp(sdsPluginBase):
                 print("Could not convert end year to int")
                 return None
         if idx:
-            result=self.colav_db["institutions"].find_one({"_id":ObjectId(idx)})
+            result=self.colav_db["affiliations"].find_one({"_id":ObjectId(idx)})
         else:
             return None
 
@@ -695,7 +695,7 @@ class InstitutionsApp(sdsPluginBase):
                 affiliations=[]
                 for aff in author["affiliations"]:
                     aff_entry={}
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
                     if aff_db:
                         aff_entry={"institution":{"name":aff_db["name"],"id":aff_db["_id"]}}
                         break
@@ -910,7 +910,7 @@ class InstitutionsApp(sdsPluginBase):
             if "affiliations" in paper["authors"][0].keys():
                 if len(paper["authors"][0]["affiliations"])>0:
                     csv_text+="\t"+str(paper["authors"][0]["affiliations"][0]["id"])
-                    aff_db=self.colav_db["institutions"].find_one({"_id":paper["authors"][0]["affiliations"][0]["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":paper["authors"][0]["affiliations"][0]["id"]})
             if aff_db:
                 csv_text+="\t"+aff_db["name"]
                 country_entry=""
@@ -977,7 +977,7 @@ class InstitutionsApp(sdsPluginBase):
                 affiliations=[]
                 for aff in author["affiliations"]:
                     aff_entry=aff
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
                     if aff_db:
                         aff_entry=aff_db
                     branches=[]

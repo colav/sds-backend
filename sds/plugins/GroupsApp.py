@@ -231,11 +231,15 @@ class GroupsApp(sdsPluginBase):
                 group_id=""
                 inst_name=""
                 inst_id=""
-                if len(reg["affiliations"]>0):
+                if len(reg["affiliations"])>0:
                     for aff in reg["affiliations"]:
-                        if aff["type"]=="group":
-                            group_name = aff["name"]
-                            group_id = aff["id"]
+                        if "type" in aff.keys():
+                            if aff["type"]=="group":
+                                group_name = aff["name"]
+                                group_id = aff["id"]
+                            else:
+                                inst_name=aff["name"]
+                                inst_id=aff["id"]
                         else:
                             inst_name=aff["name"]
                             inst_id=aff["id"]
