@@ -32,7 +32,9 @@ class CompendiumApp(sdsPluginBase):
                 return None
 
         search_dict={}
-        var_dict={"name":1,"products_count":1,"citations_count":1,"products_by_year":1,"affiliations":1,"authors":1}
+        var_dict={"name":1,"products_count":1,
+                "citations_count":1,"products_by_year":1,
+                "affiliations":1,"authors":1,"counts_by_year":1}
         total=self.colav_db["subjects"].count_documents(search_dict)
         cursor=self.colav_db["subjects"].find(search_dict,var_dict)
         
@@ -67,6 +69,10 @@ class CompendiumApp(sdsPluginBase):
                 entry["groups"]=[{"name":aff["name"],"id":aff["id"]} for aff in subject["affiliations"] if "type" in subject.keys()][:5]
             if "authors" in subject.keys():
                 entry["authors"]=[{"name":au["name"],"id":au["id"]} for au in subject["authors"]][:5]
+            
+            entry["plot"]=[{"year":sub["year"],"produscts":sub["works_count"],"citations":sub["cited_by_count"]} for sub in subject["counts_by_year"]]
+            entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
+            
             data.append(entry)
 
         return {"data":data,"page":page,"count":max_results,"total":total}
