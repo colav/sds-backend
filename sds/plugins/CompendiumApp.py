@@ -89,8 +89,8 @@ class CompendiumApp(sdsPluginBase):
                 "plot":[] #citations and products per year
             }
             if "affiliations" in subject.keys():
-                entry["institutions"]=[{"name":aff["name"],"id":aff["id"]} for aff in subject["affiliations"] if not "type" in subject.keys()][:5]
-                entry["groups"]=[{"name":aff["name"],"id":aff["id"]} for aff in subject["affiliations"] if "type" in subject.keys()][:5]
+                entry["institutions"]=[{"name":aff["name"],"id":aff["id"]} for aff in subject["affiliations"] if subject["types"]!=["group"]][:5]
+                entry["groups"]=[{"name":aff["name"],"id":aff["id"]} for aff in subject["affiliations"] if subject["types"]==["group"]][:5]
             if "authors" in subject.keys():
                 entry["authors"]=[{"name":au["name"],"id":au["id"]} for au in subject["authors"]][:5]
             
