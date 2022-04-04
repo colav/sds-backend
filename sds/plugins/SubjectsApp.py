@@ -438,10 +438,11 @@ class SubjectsApp(sdsPluginBase):
                 continue
         return {"total":total,"page":page,"count":len(entry),"data":entry}
 
-    def get_institutions(self,idx=None,institutions=[],page=1,max_results=100,sort="citations",direction="descending"):
+    def get_institutions(self,idx=None,institutions="",page=1,max_results=100,sort="citations",direction="descending"):
         search_dict={"types":{"$ne":"group"},"subjects.id":ObjectId(idx)}
         if institutions:
-            search_dict["_id"]={"$in":institutions}
+            institutions_list=[ObjectId(inst) for inst in institutions.split()]
+            search_dict["_id"]={"$in":institutions_list}
         total_results = self.colav_db["affiliations"].count_documents(search_dict)
 
         if not page:
@@ -755,11 +756,11 @@ class SubjectsApp(sdsPluginBase):
             idx = self.request.args.get('id')
             max_results=self.request.args.get('max')
             page=self.request.args.get('page')
-
-            groups=self.get_institutions(idx,page,max_results)
-            if groups:
+            institutions=self.request.args.get('institutions')
+            res=self.get_institutions(idx,page=page,max_results=max_results,institutions=institutions)
+            if res:
                 response = self.app.response_class(
-                response=self.json.dumps(groups),
+                response=self.json.dumps(res),
                 status=200,
                 mimetype='application/json'
                 )
