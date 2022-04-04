@@ -630,12 +630,12 @@ class SubjectsApp(sdsPluginBase):
                 for group in groups.split(" "):
                     filter_list.append({"affiliations.id":ObjectId(group)})
             if start_year:
-                query["subjects_by-year"]={"$gte":start_year}
+                query["subjects_by_year.year"]={"$gte":start_year}
             if end_year:
                 if "subjects_by_year" in query.keys():
-                    query["year_published"]["$lte"]=end_year
+                    query["subjects_by_year.year"]["$lte"]=end_year
                 else:
-                    query["year_published"]={"$lte":end_year}
+                    query["subjects_by_year.year"]={"$lte":end_year}
 
             if len(filter_list)>0:
                 query["$or"]=filter_list
