@@ -341,7 +341,7 @@ class SearchApp(sdsPluginBase):
             country_pipeline=[{"$match":{"$text":{"$search":keywords},"types":{"$ne":"group"},"external_ids":{"$ne":[]}}}]
         else:
             if country:
-                cursor=self.colav_db['affiliations'].find({"addresses.country_code":country,,"types":{"$ne":"group"}"external_ids":{"$ne":[]}})
+                cursor=self.colav_db['affiliations'].find({"addresses.country_code":country,"types":{"$ne":"group"},"external_ids":{"$ne":[]}})
                 
             else:
                 cursor=self.colav_db['affiliations'].find({"external_ids":{"$ne":[]},"types":{"$ne":"group"}})

@@ -12,8 +12,28 @@ class CompendiumApp(sdsPluginBase):
     def __init__(self, sds):
         super().__init__(sds)
 
+    def get_info(self):
+        result=self.colav_db['documents'].find({},{"year_published":1}).sort([("year_published",ASCENDING)]).limit(1)
+        if result:
+            result=list(result)
+            if len(result)>0:
+                initial_year=result[0]["year_published"]
+        result=self.colav_db['documents'].find({},{"year_published":1}).sort([("year_published",DESCENDING)]).limit(1)
+        if result:
+            result=list(result)
+            if len(result)>0:
+                final_year=result[0]["year_published"]
+
+        filters={
+            "start_year":initial_year if initial_year!=0 else "",
+            "end_year":final_year if final_year!=0 else "",
+            "groups":[{"name":reg["name"],"id":reg["_id"]} for reg in self.colav_db["affiliations"].find({"types":"group"},{"name":1})],
+            "institutions":[{"name":reg["name"],"id":reg["_id"]} for reg in self.colav_db["affiliations"].find({"types":{"$ne":"group"}},{"name":1})]
+        }
+
+        return {"filters":filters}
+
     def get_subjects(self,page=1,max_results=10,institutions=[],groups=[],sort="citations",direction="descending"):
-        filters={}
         if not page:
             page=1
         else:
@@ -77,7 +97,7 @@ class CompendiumApp(sdsPluginBase):
             
             data.append(entry)
 
-        return {"data":data,"page":page,"count":max_results,"total":total,"filters":filters}
+        return {"data":data,"page":page,"count":max_results,"total":total}
 
 
     def get_groups(self,page=1,max_results=10,groups="",institutions="",sort="citations",direction="descending"):
@@ -180,24 +200,6 @@ class CompendiumApp(sdsPluginBase):
 
 
     def get_institutions(self,page=1,max_results=10,groups="",institutions="",sort="citations",direction="descending"):
-        
-        result=self.colav_db['documents'].find({"authors.affiliations.id":ObjectId(idx)},{"year_published":1}).sort([("year_published",ASCENDING)]).limit(1)
-        if result:
-            result=list(result)
-            if len(result)>0:
-                initial_year=result[0]["year_published"]
-        result=self.colav_db['documents'].find({"authors.affiliations.id":ObjectId(idx)},{"year_published":1}).sort([("year_published",DESCENDING)]).limit(1)
-        if result:
-            result=list(result)
-            if len(result)>0:
-                final_year=result[0]["year_published"]
-
-        filters={
-            "start_year":initial_year if initial_year!=0 else "",
-            "end_year":final_year if final_year!=0 else ""
-            "groups":[{"name":reg["name"],"id":reg["_id"]} for reg in self.colav_db["affiliations"].find({"types":"group"},{"name":1})],
-            "institutions":[{"name":reg["name"],"id":reg["_id"]} for reg in self.colav_db["affiliations"].find({"types":{"$ne":"group"}},{"name":1})],,
-        }
 
         if not page:
             page=1
@@ -289,8 +291,22 @@ class CompendiumApp(sdsPluginBase):
         """
         
         data = self.request.args.get('data')
-
-        if data=="groups":
+        
+        if data=="info":
+            info=self.get_info()
+            if info:    
+                response = self.app.response_class(
+                response=self.json.dumps(info),
+                status=200,
+                mimetype='application/json'
+                )
+            else:
+                response = self.app.response_class(
+                response=self.json.dumps({"status":"Request returned empty"}),
+                status=204,
+                mimetype='application/json'
+            )
+        elif data=="groups":
             max_results=self.request.args.get('max')
             page=self.request.args.get('page')
             sort=self.request.args.get('sort')
