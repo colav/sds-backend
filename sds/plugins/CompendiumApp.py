@@ -89,8 +89,15 @@ class CompendiumApp(sdsPluginBase):
                 "plot":[] #citations and products per year
             }
             if "affiliations" in subject.keys():
-                entry["institutions"]=[{"name":aff["name"],"id":aff["id"]} for aff in subject["affiliations"] if subject["types"]!=["group"]][:5]
-                entry["groups"]=[{"name":aff["name"],"id":aff["id"]} for aff in subject["affiliations"] if subject["types"]==["group"]][:5]
+                for aff in subject["affiliations"]:
+                    if "types" in aff.keys():
+                        if aff["types"]=="group":
+                            entry["groups"].append({"name":aff["name"],"id":aff["id"]})
+                        else:
+                            entry["institutions"].append({"name":aff["name"],"id":aff["id"]})
+            entry["groups"]=entry["groups"][:5]
+            entry["institutions"]=entry["institutions"][:5]
+                        
             if "authors" in subject.keys():
                 entry["authors"]=[{"name":au["name"],"id":au["id"]} for au in subject["authors"]][:5]
             
@@ -121,7 +128,7 @@ class CompendiumApp(sdsPluginBase):
                 print("Could not convert end max to int")
                 return None
 
-        search_dict={"type":"group"}
+        search_dict={"types":"group"}
         in_list=[]
         if groups:
             in_list.extend(groups.split())
@@ -132,7 +139,11 @@ class CompendiumApp(sdsPluginBase):
             for iid in in_list:
                 def_list.append(ObjectId(iid))
             search_dict["_id"]={"$in":def_list}
-        var_dict={"name":1,"relations":1,"products_count":1,"citations_count":1,"products_by_year":1,"subjects":1}
+        var_dict={
+            "name":1,"relations":1,
+            "products_count":1,"citations_count":1,
+            "products_by_year":1,"subjects":1
+        }
         total=self.colav_db["affiliations"].count_documents(search_dict)
         cursor=self.colav_db["affiliations"].find(search_dict,var_dict)
         
