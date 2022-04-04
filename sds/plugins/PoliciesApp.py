@@ -399,7 +399,8 @@ class PoliciesApp(sdsPluginBase):
                     "year_published":doc["year_published"],
                     "open_access_status":doc["open_access_status"],
                     "source":{"name":source["title"],"id":str(source["_id"])},
-                    "authors":authors
+                    "authors":authors,
+                    "subjects":[{"name":reg["name"],"id":reg["id"]}for reg in doc["subjects"]] if "subjects" in doc.keys() else  []
                     })
 
             except:
@@ -443,22 +444,23 @@ class PoliciesApp(sdsPluginBase):
 
         data=[]
         names=[]
-        for key,val in result["subjects_by_year"].items():
-            year=int(key)
+
+        for reg in result["subjects_by_year"]:
+            year=int(reg["year"])
             if start_year:
                 if start_year>year:
                     continue
             if end_year:
                 if end_year<year:
                     continue
-            for sub in val:
+            for sub in reg["subjects"]:
                 if sub["name"] in names:
-                    data[names.index(sub["name"])]["value"]+=sub["value"]
+                    data[names.index(sub["name"])]["products"]+=sub["products"]
                 else:
                     data.append(sub)
                     names.append(sub["name"])
         
-        sorted_data=sorted(data,key=lambda x:x["value"],reverse=True)
+        sorted_data=sorted(data,key=lambda x:x["products"],reverse=True)
                 
         return {"data":sorted_data[:limit],"total":len(data)}
     
@@ -590,7 +592,7 @@ class PoliciesApp(sdsPluginBase):
                     if "affiliations" in reg["author"].keys():
                         if len(reg["author"]["affiliations"])>0:
                             for aff in reg["author"]["affiliations"]:
-                                if aff["type"]=="group":
+                                if aff["types"]=="group":
                                     group_name = aff["name"]
                                     group_id =   aff["id"]
                                 else:

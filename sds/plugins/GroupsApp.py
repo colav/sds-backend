@@ -598,7 +598,8 @@ class GroupsApp(sdsPluginBase):
                     "year_published":doc["year_published"],
                     "open_access_status":doc["open_access_status"],
                     "source":{"name":source["title"],"id":str(source["_id"])},
-                    "authors":authors
+                    "authors":authors,
+                    "subjects":[{"name":reg["name"],"id":reg["id"]}for reg in doc["subjects"]] if "subjects" in doc.keys() else  []
                     })
 
             except:

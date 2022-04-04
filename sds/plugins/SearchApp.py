@@ -837,7 +837,8 @@ class SearchApp(sdsPluginBase):
                     "source":"",
                     "open_access_status":paper["open_access_status"],
                     "year_published":paper["year_published"],
-                    "citations_count":paper["citations_count"]
+                    "citations_count":paper["citations_count"],
+                    "subjects":[{"name":reg["name"],"id":reg["id"]}for reg in paper["subjects"]] if "subjects" in paper.keys() else  []
                 }
 
                 source=self.colav_db["sources"].find_one({"_id":paper["source"]["id"]})
