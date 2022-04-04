@@ -182,7 +182,6 @@ class CompendiumApp(sdsPluginBase):
             year_index={}
 
             for i,prod in enumerate(reg["products_by_year"]):
-                
                 entry["plot"].append({
                     "year":prod["year"],
                     "products":prod["value"],

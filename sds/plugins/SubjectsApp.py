@@ -438,9 +438,11 @@ class SubjectsApp(sdsPluginBase):
                 continue
         return {"total":total,"page":page,"count":len(entry),"data":entry}
 
-    def get_institutions(self,idx=None,page=1,max_results=100,sort="citations",direction="descending"):
-        
-        total_results = self.colav_db["affiliations"].count_documents({"subjects.id":ObjectId(idx)})
+    def get_institutions(self,idx=None,institutions=[],page=1,max_results=100,sort="citations",direction="descending"):
+        search_dict={"types":{"$ne":"group"},"subjects.id":ObjectId(idx)}
+        if institutions:
+            search_dict["_id"]={"$in":institutions}
+        total_results = self.colav_db["affiliations"].count_documents(search_dict)
 
         if not page:
             page=1
@@ -461,20 +463,49 @@ class SubjectsApp(sdsPluginBase):
 
         skip = (max_results*(page-1))
 
-        cursor=self.colav_db["affiliations"].find({"subjects.id":ObjectId(idx)})
+        cursor=self.colav_db["affiliations"].find(search_dict)
 
-        cursor=cursor.skip(skip).limit(max_results)
-
+        #SORTING here is wrong, it should sort from citations and production in the subject
         if sort=="citations" and direction=="ascending":
             cursor.sort([("citations_count",ASCENDING)])
         if sort=="citations" and direction=="descending":
             cursor.sort([("citations_count",DESCENDING)])
+        if sort=="production" and direction=="ascending":
+            cursor.sort([("products_count",ASCENDING)])
+        if sort=="production" and direction=="descending":
+            cursor.sort([("products_count",DESCENDING)])
 
-        entry = []
+        cursor=cursor.skip(skip).limit(max_results)
+
+        data = []
         for reg in cursor:
-            entry.append({"name":reg["name"],"id":reg["_id"],"citations":reg["citations_count"]})
+            entry={
+                "name":reg["name"],
+                "id":reg["_id"],
+                "plot":[],
+                "citations_ratio":"0/"+str(reg["citations_count"]),
+                "products_ratio":"0/"+str(reg["products_count"]),
+                "word_cloud":[sub for sub in reg["subjects"] if str(sub["id"])!=idx]
+            }
+            if "subjects" in reg.keys():
+                for sub in reg["subjects"]:
+                    if str(sub["id"])==idx:
+                        entry["citations_ratio"]=str(sub["citations"])+"/"+str(reg["citations_count"])
+                        entry["products_ratio"]=str(sub["products"])+"/"+str(reg["products_count"])
+                        break
+            for year_sub in reg["subjects_by_year"]:
+                for sub in year_sub["subjects"]:
+                    if str(sub["id"])==idx:
+                        entry["plot"].append({
+                            "year":year_sub["year"],
+                            "products":sub["products"],
+                            "citations":sub["citations"]
+                        })
+            
+            entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
+            data.append(entry)
 
-        return {"total":total_results,"page":page,"count":len(entry),"data":entry}
+        return {"total":total_results,"page":page,"count":len(data),"data":data}
     
     def get_groups(self,idx=None,page=1,max_results=100,sort="citations",direction="descending"):
         
