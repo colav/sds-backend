@@ -70,7 +70,7 @@ class CompendiumApp(sdsPluginBase):
             if "authors" in subject.keys():
                 entry["authors"]=[{"name":au["name"],"id":au["id"]} for au in subject["authors"]][:5]
             
-            entry["plot"]=[{"year":sub["year"],"produscts":sub["works_count"],"citations":sub["cited_by_count"]} for sub in subject["counts_by_year"]]
+            entry["plot"]=[{"year":sub["year"],"products":sub["works_count"],"citations":sub["cited_by_count"]} for sub in subject["counts_by_year"]]
             entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
             
             data.append(entry)
