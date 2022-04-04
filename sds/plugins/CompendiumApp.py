@@ -12,8 +12,8 @@ class CompendiumApp(sdsPluginBase):
     def __init__(self, sds):
         super().__init__(sds)
 
-
     def get_subjects(self,page=1,max_results=10,institutions=[],groups=[],sort="citations",direction="descending"):
+        filters={}
         if not page:
             page=1
         else:
@@ -42,9 +42,9 @@ class CompendiumApp(sdsPluginBase):
             cursor.sort([("citations_count",ASCENDING)])
         if sort=="citations" and direction=="descending":
             cursor.sort([("citations_count",DESCENDING)])
-        if sort=="production" and direction=="ascending":
+        if sort=="products" and direction=="ascending":
             cursor.sort([("products_count",ASCENDING)])
-        if sort=="production" and direction=="descending":
+        if sort=="products" and direction=="descending":
             cursor.sort([("products_count",DESCENDING)])
 
         skip = (max_results*(page-1))
@@ -58,6 +58,8 @@ class CompendiumApp(sdsPluginBase):
             entry={
                 "index":index,
                 "name":subject["name"],
+                "products_count":subject["works_count"],
+                "citations_count":subject["cited_by_count"],
                 "id":subject["_id"],
                 "institutions":[], 
                 "authors":[], 
@@ -75,10 +77,11 @@ class CompendiumApp(sdsPluginBase):
             
             data.append(entry)
 
-        return {"data":data,"page":page,"count":max_results,"total":total}
+        return {"data":data,"page":page,"count":max_results,"total":total,"filters":filters}
 
 
     def get_groups(self,page=1,max_results=10,groups="",institutions="",sort="citations",direction="descending"):
+        filters={}
         if not page:
             page=1
         else:
@@ -115,9 +118,9 @@ class CompendiumApp(sdsPluginBase):
             cursor.sort([("citations_count",ASCENDING)])
         if sort=="citations" and direction=="descending":
             cursor.sort([("citations_count",DESCENDING)])
-        if sort=="production" and direction=="ascending":
+        if sort=="products" and direction=="ascending":
             cursor.sort([("products_count",ASCENDING)])
-        if sort=="production" and direction=="descending":
+        if sort=="products" and direction=="descending":
             cursor.sort([("products_count",DESCENDING)])
 
         skip = (max_results*(page-1))
@@ -177,6 +180,25 @@ class CompendiumApp(sdsPluginBase):
 
 
     def get_institutions(self,page=1,max_results=10,groups="",institutions="",sort="citations",direction="descending"):
+        
+        result=self.colav_db['documents'].find({"authors.affiliations.id":ObjectId(idx)},{"year_published":1}).sort([("year_published",ASCENDING)]).limit(1)
+        if result:
+            result=list(result)
+            if len(result)>0:
+                initial_year=result[0]["year_published"]
+        result=self.colav_db['documents'].find({"authors.affiliations.id":ObjectId(idx)},{"year_published":1}).sort([("year_published",DESCENDING)]).limit(1)
+        if result:
+            result=list(result)
+            if len(result)>0:
+                final_year=result[0]["year_published"]
+
+        filters={
+            "start_year":initial_year if initial_year!=0 else "",
+            "end_year":final_year if final_year!=0 else ""
+            "groups":[{"name":reg["name"],"id":reg["_id"]} for reg in self.colav_db["affiliations"].find({"types":"group"},{"name":1})],
+            "institutions":[{"name":reg["name"],"id":reg["_id"]} for reg in self.colav_db["affiliations"].find({"types":{"$ne":"group"}},{"name":1})],,
+        }
+
         if not page:
             page=1
         else:
@@ -213,9 +235,9 @@ class CompendiumApp(sdsPluginBase):
             cursor.sort([("citations_count",ASCENDING)])
         if sort=="citations" and direction=="descending":
             cursor.sort([("citations_count",DESCENDING)])
-        if sort=="production" and direction=="ascending":
+        if sort=="products" and direction=="ascending":
             cursor.sort([("products_count",ASCENDING)])
-        if sort=="production" and direction=="descending":
+        if sort=="products" and direction=="descending":
             cursor.sort([("products_count",DESCENDING)])
         
         skip = (max_results*(page-1))

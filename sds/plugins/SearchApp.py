@@ -334,19 +334,19 @@ class SearchApp(sdsPluginBase):
     def search_institution(self,keywords="",country="",max_results=100,page=1,sort='citations'):
         if keywords:
             if country:
-                cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"addresses.country_code":country,"external_ids":{"$ne":[]}})
+                cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"types":{"$ne":"group"},"addresses.country_code":country,"external_ids":{"$ne":[]}})
             else:
-                cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"external_ids":{"$ne":[]}})
+                cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"types":{"$ne":"group"},"external_ids":{"$ne":[]}})
                 
-            country_pipeline=[{"$match":{"$text":{"$search":keywords},"external_ids":{"$ne":[]}}}]
+            country_pipeline=[{"$match":{"$text":{"$search":keywords},"types":{"$ne":"group"},"external_ids":{"$ne":[]}}}]
         else:
             if country:
-                cursor=self.colav_db['affiliations'].find({"addresses.country_code":country,"external_ids":{"$ne":[]}})
+                cursor=self.colav_db['affiliations'].find({"addresses.country_code":country,,"types":{"$ne":"group"}"external_ids":{"$ne":[]}})
                 
             else:
-                cursor=self.colav_db['affiliations'].find({"external_ids":{"$ne":[]}})
+                cursor=self.colav_db['affiliations'].find({"external_ids":{"$ne":[]},"types":{"$ne":"group"}})
                 
-            country_pipeline=[]
+            country_pipeline=[{"$match":{"types":{"$ne":"group"}}}]
         
         if sort=="citations":
             cursor.sort([("citations_count",DESCENDING)])
