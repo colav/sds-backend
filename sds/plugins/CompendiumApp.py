@@ -54,7 +54,9 @@ class CompendiumApp(sdsPluginBase):
         search_dict={}
         var_dict={"name":1,"products_count":1,
                 "citations_count":1,"products_by_year":1,
-                "affiliations":1,"authors":1,"counts_by_year":1}
+                "affiliations":1,"authors":1,"counts_by_year":1,
+                "works_count":1,
+                "cited_by_count":1}
         total=self.colav_db["subjects"].count_documents(search_dict)
         cursor=self.colav_db["subjects"].find(search_dict,var_dict)
         
