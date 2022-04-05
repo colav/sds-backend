@@ -75,7 +75,7 @@ class SubjectsApp(sdsPluginBase):
                     }
                     break
 
-        return {"data":{"tree":tree,"parent":parent},"filters":filters}
+        return {"data":{"tree":tree,"parent":parent,"citations":result["cited_by_count"],"products":result["works_count"]},"filters":filters}
 
     def get_venn(self,venn_query):
         venn_source={
@@ -485,15 +485,15 @@ class SubjectsApp(sdsPluginBase):
                 "name":reg["name"],
                 "id":reg["_id"],
                 "plot":[],
-                "citations_ratio":"0/"+str(reg["citations_count"]),
-                "products_ratio":"0/"+str(reg["products_count"]),
+                "citations":0,
+                "products":0,
                 "subjects":[sub for sub in reg["subjects"] if str(sub["id"])!=idx][:5]
             }
             if "subjects" in reg.keys():
                 for sub in reg["subjects"]:
                     if str(sub["id"])==idx:
-                        entry["citations_ratio"]=str(sub["citations"])+"/"+str(reg["citations_count"])
-                        entry["products_ratio"]=str(sub["products"])+"/"+str(reg["products_count"])
+                        entry["citations"]=sub["citations"]
+                        entry["products"]=sub["products"]
                         break
             for year_sub in reg["subjects_by_year"]:
                 for sub in year_sub["subjects"]:
@@ -556,8 +556,8 @@ class SubjectsApp(sdsPluginBase):
                 "id":reg["_id"],
                 "institution":{},
                 "plot":[],
-                "citations_ratio":"0/"+str(reg["citations_count"]),
-                "products_ratio":"0/"+str(reg["products_count"]),
+                "citations":0,
+                "products":0,
                 "subjects":[sub for sub in reg["subjects"] if str(sub["id"])!=idx][:5]
             }
             if "relations" in reg.keys():
@@ -569,8 +569,8 @@ class SubjectsApp(sdsPluginBase):
             if "subjects" in reg.keys():
                 for sub in reg["subjects"]:
                     if str(sub["id"])==idx:
-                        entry["citations_ratio"]=str(sub["citations"])+"/"+str(reg["citations_count"])
-                        entry["products_ratio"]=str(sub["products"])+"/"+str(reg["products_count"])
+                        entry["citations"]=sub["citations"]
+                        entry["products"]=sub["products"]
                         break
             for year_sub in reg["subjects_by_year"]:
                 for sub in year_sub["subjects"]:
