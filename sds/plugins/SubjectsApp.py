@@ -416,7 +416,7 @@ class SubjectsApp(sdsPluginBase):
                         aff_entry={"name":aff_db["name"],"id":aff_db["_id"]}
                     
                     affiliation["institution"]=aff_entry
-                au_entry["affiliation"]=affiliations
+                au_entry["affiliation"]=affiliation
                 authors.append(au_entry)
 
             try:
