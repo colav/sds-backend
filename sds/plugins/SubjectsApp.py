@@ -408,15 +408,15 @@ class SubjectsApp(sdsPluginBase):
                 author_db=self.colav_db["authors"].find_one({"_id":author["id"]})
                 if author_db:
                     au_entry={"full_name":author_db["full_name"],"id":author_db["_id"]}
-                affiliations=[]
+                affiliation={}
                 for aff in author["affiliations"]:
                     aff_entry={}
                     aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
                     if aff_db:
                         aff_entry={"name":aff_db["name"],"id":aff_db["_id"]}
                     
-                    affiliations.append(aff_entry)
-                au_entry["affiliations"]=affiliations
+                    affiliation["institution"]=aff_entry
+                au_entry["affiliation"]=affiliations
                 authors.append(au_entry)
 
             try:
@@ -472,9 +472,9 @@ class SubjectsApp(sdsPluginBase):
             cursor.sort([("citations_count",ASCENDING)])
         if sort=="citations" and direction=="descending":
             cursor.sort([("citations_count",DESCENDING)])
-        if sort=="production" and direction=="ascending":
+        if sort=="products" and direction=="ascending":
             cursor.sort([("products_count",ASCENDING)])
-        if sort=="production" and direction=="descending":
+        if sort=="products" and direction=="descending":
             cursor.sort([("products_count",DESCENDING)])
 
         cursor=cursor.skip(skip).limit(max_results)
@@ -487,7 +487,7 @@ class SubjectsApp(sdsPluginBase):
                 "plot":[],
                 "citations_ratio":"0/"+str(reg["citations_count"]),
                 "products_ratio":"0/"+str(reg["products_count"]),
-                "word_cloud":[sub for sub in reg["subjects"] if str(sub["id"])!=idx]
+                "subjects":[sub for sub in reg["subjects"] if str(sub["id"])!=idx][:5]
             }
             if "subjects" in reg.keys():
                 for sub in reg["subjects"]:
@@ -558,7 +558,7 @@ class SubjectsApp(sdsPluginBase):
                 "plot":[],
                 "citations_ratio":"0/"+str(reg["citations_count"]),
                 "products_ratio":"0/"+str(reg["products_count"]),
-                "word_cloud":[sub for sub in reg["subjects"] if str(sub["id"])!=idx]
+                "subjects":[sub for sub in reg["subjects"] if str(sub["id"])!=idx][:5]
             }
             if "relations" in reg.keys():
                 if len(reg["relations"])>0:
