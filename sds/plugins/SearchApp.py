@@ -214,24 +214,24 @@ class SearchApp(sdsPluginBase):
 
     def search_branch(self,branch,keywords="",institution_id=None,max_results=100,page=1,sort="citations"):
         if keywords:
-            cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"type":branch})        
+            cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"types":branch})        
             relations = cursor.distinct("relations")
         else:
-            cursor=self.colav_db['affiliations'].find({"type":branch})
+            cursor=self.colav_db['affiliations'].find({"types":branch})
             relations = cursor.distinct("relations")
             
 
         if keywords:
             if institution_id:
-                cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"type":branch,"relations.id":ObjectId(institution_id)})
+                cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"types":branch,"relations.id":ObjectId(institution_id)})
    
             else:
-                cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"type":branch})
+                cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"types":branch})
 
             
-            pipeline=[{"$match":{"$text":{"$search":keywords},"type":branch}}]
+            pipeline=[{"$match":{"$text":{"$search":keywords},"types":branch}}]
             aff_pipeline=[
-                {"$match":{"$text":{"$search":keywords},"type":branch}},
+                {"$match":{"$text":{"$search":keywords},"types":branch}},
                 {"$project":{"relations":1}},
                 {"$unwind":"$relations"},
                 {"$group":{"_id":{"name":"$relations.name","id":"$relations.id"}}}
@@ -240,10 +240,10 @@ class SearchApp(sdsPluginBase):
             ] 
         else:
             if institution_id:
-                cursor=self.colav_db['affiliations'].find({"type":branch,"relations.id":ObjectId(institution_id)})
+                cursor=self.colav_db['affiliations'].find({"types":branch,"relations.id":ObjectId(institution_id)})
 
             else:
-                cursor=self.colav_db['affiliations'].find({"type":branch})
+                cursor=self.colav_db['affiliations'].find({"types":branch})
 
             pipeline=[]
             aff_pipeline=[
@@ -257,7 +257,7 @@ class SearchApp(sdsPluginBase):
 
         entry={"id":"","name":""}
         for r in relations:
-            if r["type"]=='university':
+            if 'university' in r["types"]:
                 entry = {"id":str(r["id"]),"name":r["name"]}
                 tmp.append(entry)
 
@@ -315,7 +315,7 @@ class SearchApp(sdsPluginBase):
                 }
                 
                 for relation in entity["relations"]:
-                    if relation["type"]=="university":
+                    if "university" in relation["types"]:
                         entry["affiliation"]["institution"]["name"]=relation["name"]
                         entry["affiliation"]["institution"]["id"]=relation["id"]
 

@@ -5,6 +5,7 @@ from pickle import load
 from datetime import date
 from math import log
 from flask import redirect
+import json
 
 
 class InstitutionsApp(sdsPluginBase):
@@ -72,7 +73,7 @@ class InstitutionsApp(sdsPluginBase):
 
 
     def get_citations(self,idx=None,start_year=None,end_year=None):
-
+        geojson=json.load(open("sds/etc/world_map.json","r"))
  
         entry={
             "citations":0,
@@ -145,12 +146,28 @@ class InstitutionsApp(sdsPluginBase):
             entry["citations"]+=reg["count"]
             entry["yearly_citations"].append({"year":reg["_id"],"value":reg["count"]})
 
-        for i, reg in enumerate(self.colav_db["documents"].aggregate(geo_pipeline)):
-            entry["geo"].append({"country": reg["country"],
-                                 "country_code": reg["_id"],
-                                 "count": reg["count"],
-                                 "log_count": reg["log_count"]}
-                                 )
+        countries={}
+        for reg in self.colav_db["documents"].aggregate(geo_pipeline,allowDiskUse=True):
+            if str(reg["_id"])==idx:
+                continue
+            if reg["_id"] and reg["country"]:
+                alpha2=reg["_id"]
+                country_name=reg["country"]
+                if alpha2 in countries.keys():
+                    countries[alpha2]["count"]+=reg["count"]
+                else:
+                    countries[alpha2]={
+                        "count":reg["count"],
+                        "name":country_name
+                    }
+        for key,val in countries.items():
+            countries[key]["log_count"]=log(val["count"])
+        for idx,feat in enumerate(geojson["features"]):
+            if feat["properties"]["iso_a2"] in countries.keys():
+               alpha2=feat["properties"]["iso_a2"]
+               geojson["features"][idx]["properties"]["data"]=countries[alpha2]
+
+        entry["geo"]=geojson
     
         return {"data": entry}
 
@@ -226,6 +243,7 @@ class InstitutionsApp(sdsPluginBase):
 
 
     def get_coauthors(self,idx=None,start_year=None,end_year=None,page=1,max_results=100):
+        geojson=json.load(open("sds/etc/world_map.json","r"))
         
         if start_year:
             try:
@@ -303,7 +321,7 @@ class InstitutionsApp(sdsPluginBase):
             {"name":reg["affiliation"]["name"],"id":reg["_id"],"count":reg["count"]} for reg in self.colav_db["documents"].aggregate(pipeline) if str(reg["_id"])!=idx
         ]
     
-        countries=[]
+        countries={}
         country_list=[]
         pipeline=[pipeline[0]]
         pipeline.extend([
@@ -314,30 +332,30 @@ class InstitutionsApp(sdsPluginBase):
             {"$project":{"count":1,"affiliation.addresses.country_code":1,"affiliation.addresses.country":1}},
             {"$unwind":"$affiliation"},
             {"$unwind":"$affiliation.addresses"}
-            #{"$sort":{"count":-1}}
         ])
         for reg in self.colav_db["documents"].aggregate(pipeline,allowDiskUse=True):
-            #print(reg)
             if str(reg["_id"])==idx:
                 continue
             if not "country_code" in reg["affiliation"]["addresses"].keys():
                 continue
             if reg["affiliation"]["addresses"]["country_code"] and reg["affiliation"]["addresses"]["country"]:
-                if reg["affiliation"]["addresses"]["country_code"] in country_list:
-                    i=country_list.index(reg["affiliation"]["addresses"]["country_code"])
-                    countries[i]["count"]+=reg["count"]
+                alpha2=reg["affiliation"]["addresses"]["country_code"]
+                country_name=reg["affiliation"]["addresses"]["country"]
+                if alpha2 in countries.keys():
+                    countries[alpha2]["count"]+=reg["count"]
                 else:
-                    country_list.append(reg["affiliation"]["addresses"]["country_code"])
-                    countries.append({
-                        "country":reg["affiliation"]["addresses"]["country"],
-                        "country_code":reg["affiliation"]["addresses"]["country_code"],
-                        "count":reg["count"]
-                    })
-        #sorted_geo=sorted(countries,key=lambda x:x["count"],reverse=True)
-        #countries=sorted_geo
-        for item in countries:
-            item["log_count"]=log(item["count"])
-        entry["geo"]=countries
+                    countries[alpha2]={
+                        "count":reg["count"],
+                        "name":country_name
+                    }
+        for key,val in countries.items():
+            countries[key]["log_count"]=log(val["count"])
+        for idx,feat in enumerate(geojson["features"]):
+            if feat["properties"]["iso_a2"] in countries.keys():
+               alpha2=feat["properties"]["iso_a2"]
+               geojson["features"][idx]["properties"]["data"]=countries[alpha2]
+
+        entry["geo"]=geojson
 
         '''nodes=[]
         edges=[]

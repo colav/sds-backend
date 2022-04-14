@@ -12,23 +12,107 @@ class CompendiumApp(sdsPluginBase):
     def __init__(self, sds):
         super().__init__(sds)
 
-    def get_info(self):
-        result=self.colav_db['documents'].find({},{"year_published":1}).sort([("year_published",ASCENDING)]).limit(1)
+    def get_info(self,institutions=[],groups=[],start_year=None,end_year=None):
+        initial_year=0
+        final_year=0
+        if start_year:
+            try:
+                start_year=int(start_year)
+            except:
+                print("Could not convert start year to int")
+                return None
+        if end_year:
+            try:
+                end_year=int(end_year)
+            except:
+                print("Could not convert end year to int")
+                return None
+
+        institutions_list=institutions.split() if institutions else []
+        groups_list=groups.split() if groups else []
+
+        search_dict={}
+        in_list=[]
+        if groups:
+            in_list.extend(groups_list)
+        if institutions:
+            in_list.extend(institutions_list)
+        if len(in_list)>0:
+            def_list=[]
+            for iid in in_list:
+                def_list.append(ObjectId(iid))
+            search_dict["authors.affiliations.id"]={"$in":def_list}
+        
+        if start_year or end_year:
+            search_dict["year_published"]={}
+        if start_year:
+            search_dict["year_published"]["$gte"]=start_year
+        if end_year:
+            search_dict["year_published"]["$lte"]=end_year
+
+        result=self.colav_db['documents'].find(search_dict,{"year_published":1}).sort([("year_published",ASCENDING)]).limit(1)
         if result:
             result=list(result)
             if len(result)>0:
                 initial_year=result[0]["year_published"]
-        result=self.colav_db['documents'].find({},{"year_published":1}).sort([("year_published",DESCENDING)]).limit(1)
+        result=self.colav_db['documents'].find(search_dict,{"year_published":1}).sort([("year_published",DESCENDING)]).limit(1)
         if result:
             result=list(result)
             if len(result)>0:
                 final_year=result[0]["year_published"]
 
+        search_dict={}
+        in_list=[]
+        if groups:
+            in_list.extend(groups_list)
+        def_list=[]
+        if len(in_list)>0:
+            for iid in in_list:
+                def_list.append(ObjectId(iid))
+            search_dict["_id"]={"$in":def_list}
+
+        search_dict["types"]="group"
+        groups_filter=[]
+        for reg in self.colav_db["affiliations"].find(search_dict,{"name":1,"relations":1}):
+            if institutions:
+                found=False
+                if "relations" in reg.keys():
+                    for rel in reg["relations"]:
+                        if str(rel["id"]) in institutions_list:
+                            found=True
+                            break
+                if found==False:
+                    continue 
+            groups_filter.append({"name":reg["name"],"id":reg["_id"]})
+        
+        search_dict={}
+        in_list=[]
+        if institutions:
+            in_list.extend(institutions_list)
+        def_list=[]
+        if len(in_list)>0:
+            for iid in in_list:
+                def_list.append(ObjectId(iid))
+            search_dict["_id"]={"$in":def_list}
+        search_dict["types"]={"$ne":"group"}
+        institutions_filter=[]
+        for reg in self.colav_db["affiliations"].find(search_dict,{"name":1,"relations":1}):
+            if groups:
+                found=False
+                if "relations" in reg.keys():
+                    for rel in reg["relations"]:
+                        if str(rel["id"]) in groups_list:
+                            found=True
+                            break
+                if found==False:
+                    continue 
+            institutions_filter.append({"name":reg["name"],"id":reg["_id"]})
+
         filters={
             "start_year":initial_year if initial_year!=0 else "",
             "end_year":final_year if final_year!=0 else "",
-            "groups":[{"name":reg["name"],"id":reg["_id"]} for reg in self.colav_db["affiliations"].find({"types":"group"},{"name":1})],
-            "institutions":[{"name":reg["name"],"id":reg["_id"]} for reg in self.colav_db["affiliations"].find({"types":{"$ne":"group"}},{"name":1})]
+            "groups":groups_filter,
+            "institutions":institutions_filter
         }
 
         return {"filters":filters}
@@ -305,7 +389,11 @@ class CompendiumApp(sdsPluginBase):
         data = self.request.args.get('data')
         
         if data=="info":
-            info=self.get_info()
+            institutions=self.request.args.get('institutions')
+            groups=self.request.args.get('groups')
+            start_year=self.request.args.get('start_year')
+            end_year=self.request.args.get('end_year')
+            info=self.get_info(institutions=institutions,groups=groups,start_year=start_year,end_year=end_year)
             if info:    
                 response = self.app.response_class(
                 response=self.json.dumps(info),
