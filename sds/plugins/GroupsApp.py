@@ -189,10 +189,10 @@ class GroupsApp(sdsPluginBase):
         for key,val in countries.items():
             countries[key]["log_count"]=log(val["count"])
         for idx,feat in enumerate(geojson["features"]):
-            if feat["properties"]["iso_a2"] in countries.keys():
-               alpha2=feat["properties"]["iso_a2"]
-               geojson["features"][idx]["properties"]["data"]=countries[alpha2]
-
+            if feat["properties"]["country_code"] in countries.keys():
+               alpha2=feat["properties"]["country_code"]
+               geojson["features"][idx]["properties"]["count"]=countries[alpha2]["count"]
+               geojson["features"][idx]["properties"]["log_count"]=countries[alpha2]["log_count"]
         entry["geo"]=geojson
     
         return {"data": entry}
@@ -434,9 +434,10 @@ class GroupsApp(sdsPluginBase):
         for key,val in countries.items():
             countries[key]["log_count"]=log(val["count"])
         for idx,feat in enumerate(geojson["features"]):
-            if feat["properties"]["iso_a2"] in countries.keys():
-               alpha2=feat["properties"]["iso_a2"]
-               geojson["features"][idx]["properties"]["data"]=countries[alpha2]
+            if feat["properties"]["country_code"] in countries.keys():
+               alpha2=feat["properties"]["country_code"]
+               geojson["features"][idx]["properties"]["count"]=countries[alpha2]["count"]
+               geojson["features"][idx]["properties"]["log_count"]=countries[alpha2]["log_count"]
 
         entry["geo"]=geojson
                         

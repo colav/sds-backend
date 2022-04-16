@@ -163,9 +163,10 @@ class InstitutionsApp(sdsPluginBase):
         for key,val in countries.items():
             countries[key]["log_count"]=log(val["count"])
         for idx,feat in enumerate(geojson["features"]):
-            if feat["properties"]["iso_a2"] in countries.keys():
-               alpha2=feat["properties"]["iso_a2"]
-               geojson["features"][idx]["properties"]["data"]=countries[alpha2]
+            if feat["properties"]["country_code"] in countries.keys():
+               alpha2=feat["properties"]["country_code"]
+               geojson["features"][idx]["properties"]["count"]=countries[alpha2]["count"]
+               geojson["features"][idx]["properties"]["log_count"]=countries[alpha2]["log_count"]
 
         entry["geo"]=geojson
     
@@ -288,7 +289,7 @@ class InstitutionsApp(sdsPluginBase):
             {"$unwind":"$affiliation"}
         ])
 
-        total_results = len(set([reg["authors"]["affiliations"]["id"] for reg in self.colav_db["documents"].aggregate(pipeline[:4])]))
+        total_results = len(set([reg["authors"]["affiliations"]["id"] for reg in self.colav_db["documents"].aggregate(pipeline[:4]) if "id" in reg["authors"]["affiliations"].keys()]))
 
         if not page:
             page=1
@@ -351,9 +352,10 @@ class InstitutionsApp(sdsPluginBase):
         for key,val in countries.items():
             countries[key]["log_count"]=log(val["count"])
         for idx,feat in enumerate(geojson["features"]):
-            if feat["properties"]["iso_a2"] in countries.keys():
-               alpha2=feat["properties"]["iso_a2"]
-               geojson["features"][idx]["properties"]["data"]=countries[alpha2]
+            if feat["properties"]["country_code"] in countries.keys():
+               alpha2=feat["properties"]["country_code"]
+               geojson["features"][idx]["properties"]["count"]=countries[alpha2]["count"]
+               geojson["features"][idx]["properties"]["log_count"]=countries[alpha2]["log_count"]
 
         entry["geo"]=geojson
 
