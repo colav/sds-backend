@@ -356,6 +356,9 @@ class InstitutionsApp(sdsPluginBase):
                alpha2=feat["properties"]["country_code"]
                geojson["features"][idx]["properties"]["count"]=countries[alpha2]["count"]
                geojson["features"][idx]["properties"]["log_count"]=countries[alpha2]["count"]+1#countries[alpha2]["log_count"]
+            else:
+                geojson["features"][idx]["properties"]["log_count"]=1#countries[alpha2]["log_count"]
+
 
         entry["geo"]=geojson
 
