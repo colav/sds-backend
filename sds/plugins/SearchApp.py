@@ -93,19 +93,20 @@ class SearchApp(sdsPluginBase):
         for author in filter_cursor:
             if "affiliations" in author.keys():
                 if len(author["affiliations"])>0:
-                    institution=author["affiliations"][0]
-                    if not str(institution["id"]) in institution_ids:    
-                        institution_ids.append(str(institution["id"]))
-                        entry = {"id":str(institution["id"]),"name":institution["name"]}
-                        institution_filters.append(entry)
-            if "branches" in author.keys():
-                if len(author["branches"])>0:
-                    for branch in author["branches"]:
-                        if branch["type"]=="group":
-                            if not str(branch["id"]) in groups_ids:
-                                groups_ids.append(str(branch["id"]))
-                                entry = {"id":str(branch["id"]),"name":branch["name"]}
-                                group_filters.append(entry)
+                    for aff in author["affiliations"]:
+                        if "type" in aff.keys():
+                            if aff["type"]=="group":
+                                if not aff["id"] in groups_ids:
+                                    groups_ids.append(aff["id"])
+                                    group_filters.append({
+                                        "id":str(aff["id"]),
+                                        "name":aff["name"]
+                                    })
+                        else:
+                            if not str(aff["id"]) in institution_ids:    
+                                institution_ids.append(str(aff["id"]))
+                                entry = {"id":str(aff["id"]),"name":aff["name"]}
+                                institution_filters.append(entry)
 
         if keywords and group_id:
             cursor=self.colav_db['authors'].find({"$text":{"$search":keywords},"external_ids":{"$ne":[]},
@@ -190,15 +191,15 @@ class SearchApp(sdsPluginBase):
                 }
                 if "affiliations" in author.keys():
                     if len(author["affiliations"])>0:
-                        entry["affiliation"]["institution"]["name"]=author["affiliations"][-1]["name"]
-                        entry["affiliation"]["institution"]["id"]  =author["affiliations"][-1]["id"]
-                if "branches" in author.keys():
-                    for branch in author["branches"]:
-                        if branch["type"]=="group":
-                            entry["affiliation"]["group"]={
-                                "name":branch["name"],
-                                "id":branch["id"]
-                            }
+                        for aff in author["affiliations"]:
+                            if "type" in aff.keys():
+                                entry["affiliation"]["group"]={
+                                    "name":aff["name"],
+                                    "id":aff["id"]
+                                }
+                            else:
+                                entry["affiliation"]["institution"]["name"]=aff["name"]
+                                entry["affiliation"]["institution"]["id"]  =aff["id"]
 
                 author_list.append(entry)
     

@@ -81,7 +81,7 @@ class AuthorsApp(sdsPluginBase):
                                 entry["affiliation"]["group"]["name"]=aff["name"]
             
             if entry["affiliation"]["institution"]["id"] != "":
-                    inst_db=self.colav_db["institutions"].find_one({"_id":ObjectId(entry["affiliation"]["institution"]["id"])})
+                    inst_db=self.colav_db["affiliations"].find_one({"_id":ObjectId(entry["affiliation"]["institution"]["id"])})
                     if inst_db:
                         #entry["country_code"]=inst_db["addresses"][0]["country_code"]
                         #entry["country"]=inst_db["addresses"][0]["country"]
@@ -723,17 +723,14 @@ class AuthorsApp(sdsPluginBase):
                 for aff in author["affiliations"]:
                     aff_entry={}
                     group_entry={}
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
-                    if aff_db:
-                        aff_entry={"name":aff_db["name"],"id":aff_db["_id"]}
-                    branches=[]
-                    if "branches" in aff.keys():
-                        for branch in aff["branches"]:
-                            if "id" in branch.keys():
-                                branch_db=self.colav_db["branches"].find_one({"_id":branch["id"]})
-                                if branch_db and branch_db["type"] != "department" and branch_db["type"]!="faculty":
-                                    group_entry= ({"name":branch_db["name"],"type":branch_db["type"],"id":branch_db["_id"]})
-                                    affiliations.append(group_entry)
+                    if not "id" in aff.keys():
+                        continue
+                    if "type" in aff.keys():
+                        if aff["type"]=="group":
+                            group_entry= ({"name":aff["name"],"id":aff["id"]})
+                            affiliations.append(group_entry)
+                    else:
+                        aff_entry={"name":aff["name"],"id":aff["id"]}
 
                     affiliations.append(aff_entry)
                 au_entry["affiliations"]=affiliations
@@ -747,7 +744,6 @@ class AuthorsApp(sdsPluginBase):
             "open_access":open_access,
             "venn_source":self.get_venn(venn_query),
             "types":tipos
-
             }
 
     def get_production_by_type(self,idx=None,max_results=100,page=1,start_year=None,end_year=None,sort=None,direction=None,tipo=None):
@@ -824,7 +820,7 @@ class AuthorsApp(sdsPluginBase):
                 affiliations=[]
                 for aff in author["affiliations"]:
                     aff_entry={}
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
                     if aff_db:
                         aff_entry={"name":aff_db["name"],"id":aff_db["_id"]}
                     
@@ -936,7 +932,7 @@ class AuthorsApp(sdsPluginBase):
             if "affiliations" in paper["authors"][0].keys():
                 if len(paper["authors"][0]["affiliations"])>0:
                     csv_text+="\t"+str(paper["authors"][0]["affiliations"][0]["id"])
-                    aff_db=self.colav_db["institutions"].find_one({"_id":paper["authors"][0]["affiliations"][0]["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":paper["authors"][0]["affiliations"][0]["id"]})
             if aff_db:
                 csv_text+="\t"+aff_db["name"]
                 country_entry=""
@@ -1001,7 +997,7 @@ class AuthorsApp(sdsPluginBase):
                 affiliations=[]
                 for aff in author["affiliations"]:
                     aff_entry=aff
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
                     if aff_db:
                         aff_entry=aff_db
                     branches=[]
