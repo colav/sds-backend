@@ -70,7 +70,7 @@ class GroupsApp(sdsPluginBase):
                 entry["abbreviations"]=group["abbreviations"][0]
             inst_id=""
             for rel in group["relations"]:
-                if "university" in rel["types"]:
+                if "university" in rel["type"]:
                     inst_id=rel["id"]
                     break
             if inst_id:
