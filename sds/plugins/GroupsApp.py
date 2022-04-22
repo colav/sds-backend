@@ -261,9 +261,6 @@ class GroupsApp(sdsPluginBase):
                             if aff["type"]=="group":
                                 group_name = aff["name"]
                                 group_id = aff["id"]
-                            else:
-                                inst_name=aff["name"]
-                                inst_id=aff["id"]
                         else:
                             inst_name=aff["name"]
                             inst_id=aff["id"]
