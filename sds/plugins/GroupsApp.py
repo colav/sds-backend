@@ -324,7 +324,7 @@ class GroupsApp(sdsPluginBase):
                     continue
             for sub in reg["subjects"]:
                 if sub["name"] in names:
-                    data[names.index(sub["name"])]["value"]+=sub["value"]
+                    data[names.index(sub["name"])]["products"]+=sub["products"]
                 else:
                     data.append(sub)
                     names.append(sub["name"])
@@ -385,19 +385,29 @@ class GroupsApp(sdsPluginBase):
         }
 
         for reg in self.colav_db["documents"].aggregate(pipeline):
-
+            affiliation_id = ""
+            affiliation_name = ""
+            group_id=""
+            group_name=""
+            if str(reg["_id"])==str(idx):
+                print("Skipped ",idx)
+                continue
             if "affiliations" in reg["author"].keys():
-                affiliation_id = reg["author"]["affiliations"][-1]["id"]
-                affiliation_name = reg["author"]["affiliations"][-1]["name"]
-
-            else: 
-                affiliation_id = ""
-                affiliation_name = ""
+                for aff in reg["author"]["affiliations"]:
+                    if "type" in aff.keys():
+                        if aff["type"]=="group":
+                            group_id=aff["id"]
+                            group_name=aff["name"]
+                    else:
+                        affiliation_id = aff["id"]
+                        affiliation_name = aff["name"]
 
             entry["coauthors"].append(
                 {"id":reg["_id"],"name":reg["author"]["full_name"],
-                "affiliation":{"institution":{"id":affiliation_id,
-                    "name":affiliation_name} },
+                "affiliation":{
+                    "institution":{"id":affiliation_id,"name":affiliation_name} ,
+                    "group":{"id":group_id,"name":group_name} ,
+                    },
                 "count":reg["count"]} 
             )
 
@@ -591,23 +601,15 @@ class GroupsApp(sdsPluginBase):
         entry=[]
 
         for doc in cursor:
-            
             authors=[]
             for author in doc["authors"]:
-                au_entry={}
-                author_db=self.colav_db["authors"].find_one({"_id":author["id"]})
-                if author_db:
-                    au_entry={"full_name":author_db["full_name"],"id":author_db["_id"]}
-                affiliations=[]
+                au_entry={"full_name":author["full_name"],"id":author["id"],"affiliation":{}}
                 for aff in author["affiliations"]:
-                    aff_entry={}
-                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
-                    if aff_db:
-                        aff_entry={"institution":{"name":aff_db["name"],"id":aff_db["_id"]}}
-                        break
+                    if "type" in aff.keys():
+                        if aff["type"]=="group":
+                            au_entry["affiliation"]["group"]={"name":aff["name"],"id":aff["id"]}        
                     else:
-                        aff_entry={"institution":{"name":"","id":""}}
-                au_entry["affiliation"]=aff_entry
+                        au_entry["affiliation"]["institution"]={"name":aff["name"],"id":aff["id"]}
                 authors.append(au_entry)
 
             try:
