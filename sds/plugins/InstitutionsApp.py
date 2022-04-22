@@ -495,22 +495,22 @@ class InstitutionsApp(sdsPluginBase):
 
         data=[]
         names=[]
-        for key,val in result["subjects_by_year"].items():
-            year=int(key)
+        for val in result["subjects_by_year"]:
+            year=val["year"]
             if start_year:
                 if start_year>year:
                     continue
             if end_year:
                 if end_year<year:
                     continue
-            for sub in val:
+            for sub in val["subjects"]:
                 if sub["name"] in names:
-                    data[names.index(sub["name"])]["value"]+=sub["value"]
+                    data[names.index(sub["name"])]["products"]+=sub["products"]
                 else:
                     data.append(sub)
                     names.append(sub["name"])
         
-        sorted_data=sorted(data,key=lambda x:x["value"],reverse=True)
+        sorted_data=sorted(data,key=lambda x:x["products"],reverse=True)
                 
         return {"data":sorted_data[:limit],"total":len(data)}
 
