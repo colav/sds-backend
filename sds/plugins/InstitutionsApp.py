@@ -173,8 +173,9 @@ class InstitutionsApp(sdsPluginBase):
         return {"data": entry}
 
     
-    def get_authors(self,idx=None,page=1,max_results=100):
+    def get_authors(self,idx=None,page=1,max_results=100,sort="citations",direction="descending"):
         if idx:
+
             pipeline=[
                 {"$match":{"authors.affiliations.id":ObjectId(idx)}}
             ]
@@ -183,11 +184,10 @@ class InstitutionsApp(sdsPluginBase):
 
                 {"$unwind":"$authors"},
                 {"$match":{"authors.affiliations.id":ObjectId(idx)}},
-                {"$project":{"authors":1,"citations_count":1}},
                 {"$group":{"_id":"$authors.id","papers_count":{"$sum":1},"citations_count":{"$sum":"$citations_count"},"author":{"$first":"$authors"}}},
                 {"$sort":{"citations_count":-1}},
-                {"$project":{"author.id":1,"author.full_name":1,"author.affiliations.name":1,"author.affiliations.id":1,
-                    "author.affiliations.branches.name":1,"author.affiliations.branches.type":1,"author.affiliations.branches.id":1,
+                {"$project":{"_id":1,"author.full_name":1,"author.affiliations.name":1,"author.affiliations.id":1,
+                    "author.affiliations.name":1,"author.affiliations.type":1,"author.affiliations.id":1,
                     "papers_count":1,"citations_count":1}}
             ])
 
@@ -210,35 +210,46 @@ class InstitutionsApp(sdsPluginBase):
                     print("Could not convert end max to int")
                     return None
 
+            
             skip = (max_results*(page-1))
 
             pipeline.extend([{"$skip":skip},{"$limit":max_results}])
 
-            result= self.colav_db["documents"].aggregate(pipeline)
-        
+            cursor=self.colav_db["authors"].find({"affiliations.id":ObjectId(idx)},
+                                                {"full_name":1,"affiliations":1,"citations_count":1,"products_count":1})
+
+            if sort=="citations" and direction=="ascending":
+                cursor.sort([("citations_count",ASCENDING)])
+            if sort=="citations" and direction=="descending":
+                cursor.sort([("citations_count",DESCENDING)])
+
+            cursor=cursor.skip(skip).limit(max_results)
+
             entry = []
-
-            for reg in result:
-                group_name = ""
-                group_id = ""
-                if "author" in reg.keys():
-                    if "affiliations" in reg["author"].keys():
-                        if len(reg["author"]["affiliations"])>0:
-                            if "branches" in reg["author"]["affiliations"][0]:
-                                for i in range(len(reg["author"]["affiliations"][0]["branches"])):    
-                                    if reg["author"]["affiliations"][0]["branches"][i]["type"]=="group":
-                                        group_name = reg["author"]["affiliations"][0]["branches"][i]["name"]
-                                        group_id =   reg["author"]["affiliations"][0]["branches"][i]["id"]    
-
-                            entry.append({
-                                "id":reg["_id"],
-                                "name":reg["author"]["full_name"],
-                                "papers_count":reg["papers_count"],
-                                "citations_count":reg["citations_count"],
-                                "affiliation":{"institution":{"name":reg["author"]["affiliations"][0]["name"], 
-                                                    "id":reg["author"]["affiliations"][0]["id"]},
-                                            "group":{"name":group_name, "id":group_id}}
-                            })
+            for reg in cursor:
+                group_name=""
+                group_id=""
+                inst_name=""
+                inst_id=""
+                if len(reg["affiliations"])>0:
+                    for aff in reg["affiliations"]:
+                        if "type" in aff.keys():
+                            if aff["type"]=="group":
+                                group_name = aff["name"]
+                                group_id = aff["id"]
+                        else:
+                            inst_name=aff["name"]
+                            inst_id=aff["id"]
+        
+                entry.append({
+                    "id":reg["_id"],
+                    "name":reg["full_name"],
+                    "papers_count":reg["products_count"],
+                    "citations_count":reg["citations_count"],
+                    "affiliation":{"institution":{"name":inst_name, 
+                                        "id":inst_id},
+                                   "group":{"name":group_name, "id":group_id}}
+                })
             
         return {"total":total_results,"page":page,"count":len(entry),"data":entry}
 
@@ -517,7 +528,7 @@ class InstitutionsApp(sdsPluginBase):
 
     def get_groups(self,idx=None,page=1,max_results=100,sort="citations",direction="descending"):
         
-        total_results = self.colav_db["branches"].count_documents({"type":"group","relations.id":ObjectId(idx)})
+        total_results = self.colav_db["affiliations"].count_documents({"types":"group","relations.id":ObjectId(idx)})
 
         if not page:
             page=1
@@ -538,7 +549,7 @@ class InstitutionsApp(sdsPluginBase):
 
         skip = (max_results*(page-1))
 
-        cursor=self.colav_db["branches"].find({"type":"group","relations.id":ObjectId(idx)})
+        cursor=self.colav_db["affiliations"].find({"types":"group","relations.id":ObjectId(idx)})
 
         cursor=cursor.skip(skip).limit(max_results)
 
