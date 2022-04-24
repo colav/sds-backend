@@ -15,7 +15,7 @@ class SearchApp(sdsPluginBase):
         if sort=="citations":
             cursor.sort([("citations_count",DESCENDING)])
         else:
-            cursor.sort([("products_count",DESCENDING)])
+            cursor.sort([("works_count",DESCENDING)])
 
         total=cursor.count()
         if not page:
@@ -213,26 +213,26 @@ class SearchApp(sdsPluginBase):
         else:
             return None
 
-    def search_branch(self,branch,keywords="",institution_id=None,max_results=100,page=1,sort="citations"):
+    def search_groups(self,keywords="",institution_id=None,max_results=100,page=1,sort="citations"):
         if keywords:
-            cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"types":branch})        
+            cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"types":"group"})        
             relations = cursor.distinct("relations")
         else:
-            cursor=self.colav_db['affiliations'].find({"types":branch})
+            cursor=self.colav_db['affiliations'].find({"types":"group"})
             relations = cursor.distinct("relations")
             
 
         if keywords:
             if institution_id:
-                cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"types":branch,"relations.id":ObjectId(institution_id)})
+                cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"types":"group","relations.id":ObjectId(institution_id)})
    
             else:
-                cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"types":branch})
+                cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"types":"group"})
 
             
-            pipeline=[{"$match":{"$text":{"$search":keywords},"types":branch}}]
+            pipeline=[{"$match":{"$text":{"$search":keywords},"types":"group"}}]
             aff_pipeline=[
-                {"$match":{"$text":{"$search":keywords},"types":branch}},
+                {"$match":{"$text":{"$search":keywords},"types":"group"}},
                 {"$project":{"relations":1}},
                 {"$unwind":"$relations"},
                 {"$group":{"_id":{"name":"$relations.name","id":"$relations.id"}}}
@@ -241,10 +241,10 @@ class SearchApp(sdsPluginBase):
             ] 
         else:
             if institution_id:
-                cursor=self.colav_db['affiliations'].find({"types":branch,"relations.id":ObjectId(institution_id)})
+                cursor=self.colav_db['affiliations'].find({"types":"group","relations.id":ObjectId(institution_id)})
 
             else:
-                cursor=self.colav_db['affiliations'].find({"types":branch})
+                cursor=self.colav_db['affiliations'].find({"types":"gruop"})
 
             pipeline=[]
             aff_pipeline=[
@@ -253,12 +253,11 @@ class SearchApp(sdsPluginBase):
                 {"$group":{"_id":{"name":"$relations.name","id":"$relations.id"}}}
             ]
             
-
         tmp = []
 
         entry={"id":"","name":""}
         for r in relations:
-            if 'university' in r["types"]:
+            if 'university' in r["type"]:
                 entry = {"id":str(r["id"]),"name":r["name"]}
                 tmp.append(entry)
 
@@ -316,7 +315,7 @@ class SearchApp(sdsPluginBase):
                 }
                 
                 for relation in entity["relations"]:
-                    if "university" in relation["types"]:
+                    if "university" in relation["type"]:
                         entry["affiliation"]["institution"]["name"]=relation["name"]
                         entry["affiliation"]["institution"]["id"]=relation["id"]
 
@@ -987,7 +986,7 @@ class SearchApp(sdsPluginBase):
             keywords = self.request.args.get('keywords') if "keywords" in self.request.args else ""
             sort = self.request.args.get('sort') if "sort" in self.request.args else "citations"
             idx = self.request.args.get('institution') if "institution" in self.request.args else ""
-            result=self.search_branch("group",keywords=keywords,institution_id=idx,max_results=max_results,page=page,sort=sort)
+            result=self.search_groups(keywords=keywords,institution_id=idx,max_results=max_results,page=page,sort=sort)
         elif data=="authors":
             max_results=self.request.args.get('max') if 'max' in self.request.args else 100
             page=self.request.args.get('page') if 'page' in self.request.args else 1
