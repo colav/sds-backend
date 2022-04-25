@@ -303,28 +303,18 @@ class SubjectsApp(sdsPluginBase):
                 entry["source"]={"name":source["title"],"id":str(source["_id"])}
             authors=[]
             for author in paper["authors"]:
-                au_entry={}
-                author_db=self.colav_db["authors"].find_one({"_id":author["id"]})
-                if author_db:
-                    au_entry={"full_name":author_db["full_name"],"id":author_db["_id"]}
-                affiliations=[]
+                au_entry={"full_name":author["full_name"]
+                            ,"id":author["id"],
+                            "affiliation":{"institution": {},"group":{}}}
+                
                 for aff in author["affiliations"]:
-                    aff_entry={}
-                    group_entry={}
-                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
-                    if aff_db:
-                        aff_entry={"name":aff_db["name"],"id":aff_db["_id"]}
-                    branches=[]
                     if "type" in aff.keys():
                         if aff["type"]=="group":
-                            if "id" in aff["type"].keys():
-                                branch_db=self.colav_db["affilations"].find_one({"_id":branch["id"]})
-                                if branch_db and branch_db["type"] == "group":
-                                    group_entry= ({"name":branch_db["name"],"type":branch_db["type"],"id":branch_db["_id"]})
-                                    affiliations.append(group_entry)
-
-                    affiliations.append(aff_entry)
-                au_entry["affiliations"]=affiliations
+                            au_entry["affiliation"]["group"]={"name":aff["name"],"id":aff["id"]}
+                    else:
+                        au_entry["affiliation"]["institution"]={"name":aff["name"],"id":aff["id"]}
+                    
+    
                 authors.append(au_entry)
             entry["authors"]=authors
             papers.append(entry)
