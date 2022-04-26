@@ -31,11 +31,30 @@ class CompendiumApp(sdsPluginBase):
         institutions_list=institutions.split() if institutions else []
         groups_list=groups.split() if groups else []
 
+        '''if start_year or end_year:
+            search_dict={}
+            if start_year:
+                initial_year=start_year
+                search_dict["year_published"]["$gte"]=start_year
+            if end_year:
+                final_year=end_year
+                search_dict["year_published"]["$lte"]=end_year
+            if initial_year and final_year:
+                if groups_list and not institutions_list:
+
+            else:
+                pass
+        else: #if neither start_year nor end_year exists
+            if groups_list:'''
+
+
+
+        #dates retreival section
         search_dict={}
         in_list=[]
         if groups:
             in_list.extend(groups_list)
-        if institutions:
+        if institutions and not groups:
             in_list.extend(institutions_list)
         if len(in_list)>0:
             def_list=[]
@@ -60,32 +79,37 @@ class CompendiumApp(sdsPluginBase):
             result=list(result)
             if len(result)>0:
                 final_year=result[0]["year_published"]
+        #end of dates retreival section
 
+        #groups and institutions retreival section
         search_dict={}
         in_list=[]
         if groups:
             in_list.extend(groups_list)
+        if institutions:
+            in_list.extend(institutions_list)
         def_list=[]
         if len(in_list)>0:
             for iid in in_list:
                 def_list.append(ObjectId(iid))
             search_dict["_id"]={"$in":def_list}
+        if start_year or end_year:
+            search_dict["products_by_year.year"]={}
+        if start_year:
+            search_dict["products_by_year.year"]["$gte"]=start_year
+        if end_year:
+            search_dict["products_by_year.year"]["$lte"]=end_year
 
-        search_dict["types"]="group"
         groups_filter=[]
-        for reg in self.colav_db["affiliations"].find(search_dict,{"name":1,"relations":1}):
-            if institutions:
-                found=False
-                if "relations" in reg.keys():
-                    for rel in reg["relations"]:
-                        if str(rel["id"]) in institutions_list:
-                            found=True
-                            break
-                if found==False:
-                    continue 
-            groups_filter.append({"name":reg["name"],"id":reg["_id"]})
+        institutions_filter=[]
+        for reg in self.colav_db["affiliations"].find(search_dict,{"name":1,"relations":1,"types":1}):
+            if "group" in reg["types"]:
+                groups_filter.append({"name":reg["name"],"id":reg["_id"]})
+            else:
+                institutions_filter.append({"name":reg["name"],"id":reg["_id"]})
+        #end of groups and institutions retreival section
         
-        search_dict={}
+        '''search_dict={}
         in_list=[]
         if institutions:
             in_list.extend(institutions_list)
@@ -106,7 +130,7 @@ class CompendiumApp(sdsPluginBase):
                             break
                 if found==False:
                     continue 
-            institutions_filter.append({"name":reg["name"],"id":reg["_id"]})
+            institutions_filter.append({"name":reg["name"],"id":reg["_id"]})'''
 
         filters={
             "start_year":initial_year if initial_year!=0 else "",

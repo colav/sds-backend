@@ -3,9 +3,10 @@ from bson import ObjectId
 from pymongo import ASCENDING,DESCENDING
 from pickle import load
 from datetime import date
-from math import log
+from math import log,exp
 from flask import redirect
 import json
+from numpy import quantile
 
 
 class InstitutionsApp(sdsPluginBase):
@@ -162,29 +163,6 @@ class InstitutionsApp(sdsPluginBase):
                     }
         for key,val in countries.items():
             countries[key]["log_count"]=log(val["count"])
-        
-        geo_bar=[
-            { "id": 0, "color": '#f7fcf0', "value": '0' },
-            { "id": 1, "color": '#e0f3db', "value": '3 - 5' },
-            { "id": 2, "color": '#ccebc5', "value": '6 - 18' },
-            { "id": 3, "color": '#a8ddb5', "value": '19 - 50' },
-            { "id": 4, "color": '#7bccc4', "value": '51 - 100' },
-            { "id": 5, "color": '#4eb3d3', "value": '101 - 200' },
-            { "id": 6, "color": '#2b8cbe', "value": '201 - 500' },
-            { "id": 7, "color": '#0868ac', "value": '501 - 800' },
-            { "id": 8, "color": '#084081', "value": '801 - 1000' }
-        ]
-        values=[v["count"] for k,v in countries.items()]
-        val_max=max(values)
-        val_min=min(values)
-        length=len(values)
-        for i,b in enumerate(geo_bar):
-            if i==0:
-                continue
-            lower=int(geo_bar[i-1]["value"].split(" - ")[-1])+1
-            upper=int(( (i+1)*val_max - (i-length)*val_min ) / ( length+1 ))
-            geo_bar[i]["value"]=str(lower)+" - "+str(upper)
-        entry["geo_bar"]=geo_bar
 
         for idx,feat in enumerate(geojson["features"]):
             if feat["properties"]["country_code"] in countries.keys():
