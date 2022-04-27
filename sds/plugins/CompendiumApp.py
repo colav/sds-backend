@@ -60,7 +60,7 @@ class CompendiumApp(sdsPluginBase):
                 search_dict["products_by_year.year"]["$gte"]=start_year
             if end_year:
                 search_dict["products_by_year.year"]["$lte"]=end_year
-            for res in self.colav_db["affiliations"].find(search_dict,{"name":1,"relations":1,"types","products_by_year":1}):
+            for res in self.colav_db["affiliations"].find(search_dict,{"name":1,"relations":1,"types":1,"products_by_year":1}):
                 if "group" in reg["types"]:
                     groups_filter.append({"name":reg["name"],"id":reg["_id"]})
                     for pby in reg["products_by_year"]:
@@ -88,7 +88,7 @@ class CompendiumApp(sdsPluginBase):
                 search_dict["products_by_year.year"]["$gte"]=start_year
             if end_year:
                 search_dict["products_by_year.year"]["$lte"]=end_year
-            for res in self.colav_db["affiliations"].find(search_dict,{"name":1,"relations":1,"types"}):
+            for res in self.colav_db["affiliations"].find(search_dict,{"name":1,"relations":1,"types":1}):
                 if not "group" in reg["types"]:
                     institutions_filter.append({"name":reg["name"],"id":reg["_id"]})
 
