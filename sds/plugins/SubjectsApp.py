@@ -690,7 +690,7 @@ class SubjectsApp(sdsPluginBase):
             cursor_products.sort([("products_count",DESCENDING)])
             cursor_products=cursor_products.limit(max_results)
             for reg in cursor_products:
-                entry["authors_production_count"].append({"name":reg["full_name"],"production'":reg["products_count"]})
+                entry["authors_production_count"].append({"name":reg["full_name"],"production":reg["products_count"]})
             
         return {"total":total_results,"page":page,"count":len(entry),"data":entry}
 
