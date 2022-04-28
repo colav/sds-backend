@@ -334,7 +334,6 @@ class AuthorsApp(sdsPluginBase):
             group_id=""
             group_name=""
             if str(reg["_id"])==str(idx):
-                print("Skipped ",idx)
                 continue
             if "affiliations" in reg["author"].keys():
                 for aff in reg["author"]["affiliations"]:
@@ -384,13 +383,19 @@ class AuthorsApp(sdsPluginBase):
                     }
         for key,val in countries.items():
             countries[key]["log_count"]=log(val["count"])
-        for idx,feat in enumerate(geojson["features"]):
+        for i,feat in enumerate(geojson["features"]):
             if feat["properties"]["country_code"] in countries.keys():
                alpha2=feat["properties"]["country_code"]
-               geojson["features"][idx]["properties"]["count"]=countries[alpha2]["count"]
-               geojson["features"][idx]["properties"]["log_count"]=countries[alpha2]["log_count"]
+               geojson["features"][i]["properties"]["count"]=countries[alpha2]["count"]
+               geojson["features"][i]["properties"]["log_count"]=countries[alpha2]["log_count"]
 
         entry["geo"]=geojson
+
+        print(idx,type(idx))
+        db_reg=self.colav_db["authors"].find_one({"_id":ObjectId(idx)})
+        if db_reg:
+            if "coauthors_network" in db_reg.keys():
+                entry["coauthors_network"]=db_reg["coauthors_network"]
 
         '''nodes=[]
         edges=[]
