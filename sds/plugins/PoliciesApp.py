@@ -288,7 +288,7 @@ class PoliciesApp(sdsPluginBase):
                         aff_entry={"name":aff_db["name"],"id":aff_db["_id"]}
                     if "type" in aff.keys():
                         if aff["type"]=="group":
-                            group_entry= ({"name":aff["name"],"type":aff["type"],"id":aff["_id"]})
+                            group_entry= ({"name":aff["name"],"type":aff["type"],"id":aff["id"]})
                             affiliations.append(group_entry)
 
                     affiliations.append(aff_entry)
@@ -665,9 +665,10 @@ class PoliciesApp(sdsPluginBase):
                     if "affiliations" in reg["author"].keys():
                         if len(reg["author"]["affiliations"])>0:
                             for aff in reg["author"]["affiliations"]:
-                                if aff["types"]=="group":
-                                    group_name = aff["name"]
-                                    group_id =   aff["id"]
+                                if "type" in aff.keys():
+                                    if aff["type"]=="group":
+                                        group_name = aff["name"]
+                                        group_id =   aff["id"]
                                 else:
                                     inst_name=aff["name"]
                                     inst_id=aff["id"]  
