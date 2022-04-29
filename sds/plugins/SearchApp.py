@@ -244,10 +244,10 @@ class SearchApp(sdsPluginBase):
         if keywords:
             if institution_id:
                 cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"types":"group","relations.id":ObjectId(institution_id)})
-   
+
             else:
                 cursor=self.colav_db['affiliations'].find({"$text":{"$search":keywords},"types":"group"})
-
+        
             
             pipeline=[{"$match":{"$text":{"$search":keywords},"types":"group"}}]
             aff_pipeline=[
@@ -263,7 +263,7 @@ class SearchApp(sdsPluginBase):
                 cursor=self.colav_db['affiliations'].find({"types":"group","relations.id":ObjectId(institution_id)})
 
             else:
-                cursor=self.colav_db['affiliations'].find({"types":"gruop"})
+                cursor=self.colav_db['affiliations'].find({"types":"group"})
 
             pipeline=[]
             aff_pipeline=[

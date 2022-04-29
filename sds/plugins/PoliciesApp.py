@@ -597,14 +597,15 @@ class PoliciesApp(sdsPluginBase):
                         entry["citations_ratio"]=str(sub["citations"])+"/"+str(reg["citations_count"])
                         entry["products_ratio"]=str(sub["products"])+"/"+str(reg["products_count"])
                         break
-            for year_sub in reg["subjects_by_year"]:
-                for sub in year_sub["subjects"]:
-                    if str(sub["id"])==idx:
-                        entry["plot"].append({
-                            "year":year_sub["year"],
-                            "products":sub["products"],
-                            "citations":sub["citations"]
-                        })
+            if "subjetcs_by_year" in reg.keys():
+                for year_sub in reg["subjects_by_year"]:
+                    for sub in year_sub["subjects"]:
+                        if str(sub["id"])==idx:
+                            entry["plot"].append({
+                                "year":year_sub["year"],
+                                "products":sub["products"],
+                                "citations":sub["citations"]
+                            })
             
             entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
             data.append(entry)
