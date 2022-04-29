@@ -328,7 +328,7 @@ class InstitutionsApp(sdsPluginBase):
         entry={
             "institutions":[],
             "geo":[],
-            "institutions_network":{} #{"nodes":load(open("./nodes.p","rb")),"edges":load(open("./edges.p","rb"))}
+            "coauthors_network":{}
         }
  
         entry["institutions"]=[
