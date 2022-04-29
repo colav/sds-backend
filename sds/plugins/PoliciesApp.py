@@ -511,14 +511,14 @@ class PoliciesApp(sdsPluginBase):
                 "id":reg["_id"],
                 "plot":[],
                 "citations_count":reg["citations_count"],
-                "papers_count":reg["products_count"],
+                "products_count":reg["products_count"],
                 "word_cloud":[sub for sub in reg["subjects"] if str(sub["id"])!=idx] if "subjects" in reg.keys() else []
             }
             if "subjects" in reg.keys():
                 for sub in reg["subjects"]:
                     if str(sub["id"])==idx:
                         entry["citations_count"]=reg["citations_count"]
-                        entry["papers_count"]=reg["products_count"]
+                        entry["products_count"]=reg["products_count"]
                         break
             if "subjects_by_year" in reg.keys():
                 for year_sub in reg["subjects_by_year"]:
@@ -583,7 +583,7 @@ class PoliciesApp(sdsPluginBase):
                 "institution":{},
                 "plot":[],
                 "citations_count":reg["citations_count"],
-                "papers_count":reg["products_count"],
+                "products_count":reg["products_count"],
                 "word_cloud":[sub for sub in reg["subjects"] if str(sub["id"])!=idx]
             }
             if "relations" in reg.keys():
@@ -596,7 +596,7 @@ class PoliciesApp(sdsPluginBase):
                 for sub in reg["subjects"]:
                     if str(sub["id"])==idx:
                         entry["citations_count"]=reg["citations_count"]
-                        entry["papers_count"]=reg["products_count"]
+                        entry["products_count"]=reg["products_count"]
                         break
             if "subjetcs_by_year" in reg.keys():
                 for year_sub in reg["subjects_by_year"]:
@@ -622,11 +622,11 @@ class PoliciesApp(sdsPluginBase):
             pipeline.extend([
                 {"$unwind":"$authors"},
                 {"$project":{"authors":1,"citations_count":1}},
-                {"$group":{"_id":"$authors.id","papers_count":{"$sum":1},"citations_count":{"$sum":"$citations_count"},"author":{"$first":"$authors"}}},
+                {"$group":{"_id":"$authors.id","products_count":{"$sum":1},"citations_count":{"$sum":"$citations_count"},"author":{"$first":"$authors"}}},
                 {"$sort":{"citations_count":-1}},
                 {"$project":{"author.id":1,"author.full_name":1,"author.affiliations.name":1,"author.affiliations.id":1,
                     "author.affiliations.name":1,"author.affiliations.type":1,"author.affiliations.id":1,
-                    "papers_count":1,"citations_count":1}}
+                    "products_count":1,"citations_count":1}}
             ])
 
             total_results = self.colav_db["authors"].count_documents({"policies.id":ObjectId(idx)})
@@ -676,7 +676,7 @@ class PoliciesApp(sdsPluginBase):
                             entry.append({
                                 "id":reg["_id"],
                                 "name":reg["author"]["full_name"],
-                                "papers_count":reg["papers_count"],
+                                "products_count":reg["products_count"],
                                 "citations_count":reg["citations_count"],
                                 "affiliation":{"institution":{"name":inst_name, 
                                                     "id":inst_id},
