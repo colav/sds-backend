@@ -9,11 +9,11 @@ class TrendsApp(sdsPluginBase):
 
     def get_info(self):
         covid_data={
-            "id":self.colav_db["subjects"].find_one({"name":{"$regex":".*covid.*","$options":"i"}},{"_id":1}),
+            "id":self.colav_db["subjects"].find_one({"name":{"$regex":".*covid.*","$options":"i"}},{"_id":1})["_id"],
             "documents":self.colav_db["documents"].count_documents({"subjects.name":{"$regex":".*covid.*","$options":"i"}}),
             "authors":self.colav_db["authors"].count_documents({"subjects.name":{"$regex":".*covid.*","$options":"i"}}),
-            "institutions":self.colav_db["institutions"].count_documents({"subjects.name":{"$regex":".*covid.*","$options":"i"}}),
-            "groups":self.colav_db["branches"].count_documents({"type":"group","subjects.name":{"$regex":".*covid.*","$options":"i"}})
+            "institutions":self.colav_db["affiliations"].count_documents({"subjects.name":{"$regex":".*covid.*","$options":"i"}}),
+            "groups":self.colav_db["affiliations"].count_documents({"type":"group","type":"group","subjects.name":{"$regex":".*covid.*","$options":"i"}})
         }
 
         ods_data=[]
@@ -21,12 +21,16 @@ class TrendsApp(sdsPluginBase):
             entry={
                 "id":policy["_id"],
                 "name":policy["name"],
-                "index":policy["ids"]["ODS"],
+                "index":"",
                 "documents":self.colav_db["documents"].count_documents({"policies.id":policy["_id"]}),
                 "authors":self.colav_db["authors"].count_documents({"policies.id":policy["_id"]}),
-                "institutions":self.colav_db["institutions"].count_documents({"policies.id":policy["_id"]}),
-                "groups":self.colav_db["branches"].count_documents({"policies.id":policy["_id"]})
+                "institutions":self.colav_db["affiliations"].count_documents({"policies.id":policy["_id"]}),
+                "groups":self.colav_db["affiliations"].count_documents({"type":"group","policies.id":policy["_id"]})
             }
+            if len(policy["index"])>0:
+                for index in policy["index"]:
+                    entry["index"]+=str(int(index["index"]))+"."
+                entry["index"]=entry["index"][:-1]
             ods_data.append(entry)
 
         pdd_reg=self.colav_db["policies"].find_one({"abbreviations":"PDD"})
@@ -34,8 +38,8 @@ class TrendsApp(sdsPluginBase):
             "id":pdd_reg["_id"],
             "documents":self.colav_db["documents"].count_documents({"policies.id":pdd_reg["_id"]}),
             "authors":self.colav_db["authors"].count_documents({"policies.id":pdd_reg["_id"]}),
-            "institutions":self.colav_db["institutions"].count_documents({"policies.id":pdd_reg["_id"]}),
-            "groups":self.colav_db["branches"].count_documents({"policies.id":pdd_reg["_id"]})
+            "institutions":self.colav_db["affiliations"].count_documents({"policies.id":pdd_reg["_id"]}),
+            "groups":self.colav_db["affiliations"].count_documents({"type":"group","policies.id":pdd_reg["_id"]})
         }
 
         pts_reg=self.colav_db["policies"].find_one({"abbreviations":"PTS"})
@@ -43,8 +47,8 @@ class TrendsApp(sdsPluginBase):
             "id":pts_reg["_id"],
             "documents":self.colav_db["documents"].count_documents({"policies.id":pts_reg["_id"]}),
             "authors":self.colav_db["authors"].count_documents({"policies.id":pts_reg["_id"]}),
-            "institutions":self.colav_db["institutions"].count_documents({"policies.id":pts_reg["_id"]}),
-            "groups":self.colav_db["branches"].count_documents({"policies.id":pts_reg["_id"]})
+            "institutions":self.colav_db["affiliations"].count_documents({"policies.id":pts_reg["_id"]}),
+            "groups":self.colav_db["affiliations"].count_documents({"type":"group","policies.id":pts_reg["_id"]})
         }
 
         return {

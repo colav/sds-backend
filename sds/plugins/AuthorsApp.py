@@ -4,6 +4,7 @@ from pymongo import ASCENDING,DESCENDING
 from pickle import load
 from math import log
 from datetime import date
+import json
 
 
 class AuthorsApp(sdsPluginBase):
@@ -70,24 +71,21 @@ class AuthorsApp(sdsPluginBase):
 
             if "affiliations" in author.keys():
                 if len(author["affiliations"]):
-                    entry["affiliation"]["institution"]["id"]=author["affiliations"][-1]["id"]
-                    entry["affiliation"]["institution"]["name"]=author["affiliations"][-1]["name"]
+                    for aff in author["affiliations"]:
+                        if not "type" in aff.keys():
+                            entry["affiliation"]["institution"]["id"]=aff["id"]
+                            entry["affiliation"]["institution"]["name"]=aff["name"]
+                        else:
+                            if aff["type"]=="group":
+                                entry["affiliation"]["group"]["id"]  =aff["id"]
+                                entry["affiliation"]["group"]["name"]=aff["name"]
             
             if entry["affiliation"]["institution"]["id"] != "":
-                    inst_db=self.colav_db["institutions"].find_one({"_id":ObjectId(entry["affiliation"]["institution"]["id"])})
+                    inst_db=self.colav_db["affiliations"].find_one({"_id":ObjectId(entry["affiliation"]["institution"]["id"])})
                     if inst_db:
                         #entry["country_code"]=inst_db["addresses"][0]["country_code"]
                         #entry["country"]=inst_db["addresses"][0]["country"]
                         entry["logo"]=inst_db["logo_url"]
-
-            if "branches" in author.keys():
-                for i in range(len(author["branches"])):
-                    if author["branches"][i]["type"]=="group":
-                        entry["affiliation"]["group"]["id"]  =author["branches"][i]["id"]
-                        entry["affiliation"]["group"]["name"]=author["branches"][i]["name"]
-
-
-
 
             sources=[]
             for ext in author["external_ids"]:
@@ -121,7 +119,7 @@ class AuthorsApp(sdsPluginBase):
         return sum(x >= i + 1 for i, x in enumerate(sorted(list(citation_list), reverse=True)))
     
     def get_citations(self,idx=None,start_year=None,end_year=None):
-
+        geojson=json.load(open("sds/etc/world_map.json","r"))
         entry={
             "citations":0,
             "yearly_citations":[],
@@ -184,7 +182,7 @@ class AuthorsApp(sdsPluginBase):
             {"$unwind":"$citers.authors"},
             {"$project":{"citers.authors.affiliations":1}},
             {"$unwind":"$citers.authors.affiliations"},
-            {"$lookup":{"from":"institutions","foreignField":"_id","localField":"citers.authors.affiliations.id","as":"affiliation"}},
+            {"$lookup":{"from":"affiliations","foreignField":"_id","localField":"citers.authors.affiliations.id","as":"affiliation"}},
             {"$project":{"affiliation.addresses.country":1,"affiliation.addresses.country_code":1}},
             {"$unwind":"$affiliation"},{"$group":{"_id":"$affiliation.addresses.country_code","count":{"$sum":1},
              "country": {"$first": "$affiliation.addresses.country"}}},{"$project": {"country": 1,"_id":1,"count": 1, "log_count": {"$ln": "$count"}}},
@@ -196,15 +194,29 @@ class AuthorsApp(sdsPluginBase):
             entry["citations"]+=reg["count"]
             entry["yearly_citations"].append({"year":reg["_id"],"value":reg["count"]})
 
+        countries={}
+        for reg in self.colav_db["documents"].aggregate(geo_pipeline,allowDiskUse=True):
+            if str(reg["_id"])==idx:
+                continue
+            if reg["_id"] and reg["country"]:
+                alpha2=reg["_id"]
+                country_name=reg["country"]
+                if alpha2 in countries.keys():
+                    countries[alpha2]["count"]+=reg["count"]
+                else:
+                    countries[alpha2]={
+                        "count":reg["count"],
+                        "name":country_name
+                    }
+        for key,val in countries.items():
+            countries[key]["log_count"]=log(val["count"])
+        for idx,feat in enumerate(geojson["features"]):
+            if feat["properties"]["country_code"] in countries.keys():
+               alpha2=feat["properties"]["country_code"]
+               geojson["features"][idx]["properties"]["count"]=countries[alpha2]["count"]
+               geojson["features"][idx]["properties"]["log_count"]=countries[alpha2]["log_count"]
 
-
-
-        for i, reg in enumerate(self.colav_db["documents"].aggregate(geo_pipeline)):
-            entry["geo"].append({"country": reg["country"],
-                                 "country_code": reg["_id"],
-                                 "count": reg["count"],
-                                 "log_count": reg["log_count"]}
-                                 )
+        entry["geo"]=geojson
     
         return {"data": entry}
 
@@ -245,26 +257,27 @@ class AuthorsApp(sdsPluginBase):
 
         data=[]
         names=[]
-        for key,val in result["subjects_by_year"].items():
-            year=int(key)
+        for val in result["subjects_by_year"]:
+            year=val["year"]
             if start_year:
                 if start_year>year:
                     continue
             if end_year:
                 if end_year<year:
                     continue
-            for sub in val:
+            for sub in val["subjects"]:
                 if sub["name"] in names:
-                    data[names.index(sub["name"])]["value"]+=sub["value"]
+                    data[names.index(sub["name"])]["products"]+=sub["products"]
                 else:
                     data.append(sub)
                     names.append(sub["name"])
         
-        sorted_data=sorted(data,key=lambda x:x["value"],reverse=True)
+        sorted_data=sorted(data,key=lambda x:x["products"],reverse=True)
                 
         return {"data":sorted_data[:limit],"total":len(data)}
 
     def get_coauthors(self,idx=None,start_year=None,end_year=None):
+        geojson=json.load(open("sds/etc/world_map.json","r"))
         initial_year=0
         final_year=0
 
@@ -316,165 +329,72 @@ class AuthorsApp(sdsPluginBase):
         }
 
         for reg in self.colav_db["documents"].aggregate(pipeline):
+            affiliation_id = ""
+            affiliation_name = ""
+            group_id=""
+            group_name=""
             if str(reg["_id"])==str(idx):
-                print("Skipped ",idx)
                 continue
             if "affiliations" in reg["author"].keys():
-                affiliation_id = reg["author"]["affiliations"][-1]["id"]
-                affiliation_name = reg["author"]["affiliations"][-1]["name"]
-
-            else: 
-                affiliation_id = ""
-                affiliation_name = ""
+                for aff in reg["author"]["affiliations"]:
+                    if "type" in aff.keys():
+                        if aff["type"]=="group":
+                            group_id=aff["id"]
+                            group_name=aff["name"]
+                    else:
+                        affiliation_id = aff["id"]
+                        affiliation_name = aff["name"]
 
             entry["coauthors"].append(
                 {"id":reg["_id"],"name":reg["author"]["full_name"],
-                "affiliation":{"institution":{"id":affiliation_id,
-                    "name":affiliation_name} },
+                "affiliation":{
+                    "institution":{"id":affiliation_id,"name":affiliation_name} ,
+                    "group":{"id":group_id,"name":group_name} ,
+                    },
                 "count":reg["count"]} 
             )
 
-        countries=[]
+        countries={}
         country_list=[]
         pipeline=[pipeline[0]]
         pipeline.extend([
             {"$unwind":"$authors"},
             {"$group":{"_id":"$authors.affiliations.id","count":{"$sum":1}}},
             {"$unwind":"$_id"},
-            {"$lookup":{"from":"institutions","localField":"_id","foreignField":"_id","as":"affiliation"}},
+            {"$lookup":{"from":"affiliations","localField":"_id","foreignField":"_id","as":"affiliation"}},
             {"$project":{"count":1,"affiliation.addresses.country_code":1,"affiliation.addresses.country":1}},
             {"$unwind":"$affiliation"},
-            {"$unwind":"$affiliation.addresses"},
-            {"$sort":{"count":-1}}
+            {"$unwind":"$affiliation.addresses"}
         ])
-        for reg in self.colav_db["documents"].aggregate(pipeline):
-
+        for reg in self.colav_db["documents"].aggregate(pipeline,allowDiskUse=True):
             if str(reg["_id"])==idx:
                 continue
             if not "country_code" in reg["affiliation"]["addresses"].keys():
                 continue
             if reg["affiliation"]["addresses"]["country_code"] and reg["affiliation"]["addresses"]["country"]:
-                if reg["affiliation"]["addresses"]["country_code"] in country_list:
-                    i=country_list.index(reg["affiliation"]["addresses"]["country_code"])
-                    countries[i]["count"]+=reg["count"]
+                alpha2=reg["affiliation"]["addresses"]["country_code"]
+                country_name=reg["affiliation"]["addresses"]["country"]
+                if alpha2 in countries.keys():
+                    countries[alpha2]["count"]+=reg["count"]
                 else:
-                    country_list.append(reg["affiliation"]["addresses"]["country_code"])
-                    countries.append({
-                        "country":reg["affiliation"]["addresses"]["country"],
-                        "country_code":reg["affiliation"]["addresses"]["country_code"],
-                        "count":reg["count"]
-                    })
-        sorted_geo=sorted(countries,key=lambda x:x["count"],reverse=True)
-        countries=sorted_geo
-        for item in countries:
-            item["log_count"]=log(item["count"])
-        entry["geo"]=countries
+                    countries[alpha2]={
+                        "count":reg["count"],
+                        "name":country_name
+                    }
+        for key,val in countries.items():
+            countries[key]["log_count"]=log(val["count"])
+        for i,feat in enumerate(geojson["features"]):
+            if feat["properties"]["country_code"] in countries.keys():
+               alpha2=feat["properties"]["country_code"]
+               geojson["features"][i]["properties"]["count"]=countries[alpha2]["count"]
+               geojson["features"][i]["properties"]["log_count"]=countries[alpha2]["log_count"]
 
-        '''nodes=[]
-        edges=[]
+        entry["geo"]=geojson
 
-        nodes_idlist=[]
-        edge_tuples=[]
-        arango_edges=[]
-        arango_nodes=[]
-        arango_mongo_nodes={}
-        query="FOR c IN authors FILTER c.mongo_id=='"+idx+"' RETURN {_id:c._id,name:c.name,affiliation:c.affiliation}"
-        result=list(self.arangodb.AQLQuery(query,rawResults=True,batchSize=1))
-        if result:
-            arangoid=result[0]["_id"]
-            nodes.append({
-                    "id":idx,
-                    "degree":0,
-                    "size":0,
-                    "label":result[0]["name"],
-                    "affiliation":result[0]["affiliation"]["name"],
-                })
-            query="FOR v,e,p IN 1..1 ANY '"+arangoid+"' GRAPH coauthors RETURN {affiliation:v.affiliation,mongo_id:v.mongo_id,_id:v._id,name:v.name,weight:e.weight}" 
-            for vertex in self.arangodb.AQLQuery(query,rawResults=True,batchSize=1):
-                arango_nodes.append(vertex["_id"])
-                
-                arango_mongo_nodes[vertex["_id"]]=vertex["mongo_id"]
-                aff_name=""
-                if vertex["affiliation"]:
-                    aff_name=vertex["affiliation"]["name"]
-                node={
-                    "id":vertex["mongo_id"],
-                    "degree":0,
-                    "size":0,
-                    "affiliation":aff_name,
-                    "label":vertex["name"]
-                }
-                if not node in nodes:
-                    nodes.append(node)
-                normal=(idx,vertex["mongo_id"])
-                rever=(vertex["mongo_id"],idx)
-                if not (normal in edge_tuples or rever in edge_tuples):
-                    edge_tuples.append(normal)
-                    edges.append({
-                        "coauthorships":vertex["weight"],
-                        "source":idx,
-                        "sourceName":result[0]["name"],
-                        "target":vertex["mongo_id"],
-                        "targetName":vertex["name"],
-                        "size":vertex["weight"]
-                    })
-
-            for node in arango_nodes:
-                query="FOR e IN coauthorship FILTER e._from=='"+node+"' RETURN {_from:e._from,_to:e._to,weight:e.weight}"
-                for res in self.arangodb.AQLQuery(query,rawResults=True,batchSize=1):
-                    if res["_to"] in arango_nodes and res["_from"] in arango_nodes:
-                        if res["_to"]==res["_from"]:
-                            continue
-                        normal=(arango_mongo_nodes[res["_from"]],arango_mongo_nodes[res["_to"]])
-                        rever=(arango_mongo_nodes[res["_to"]],arango_mongo_nodes[res["_from"]])
-                        if not (normal in edge_tuples or rever in edge_tuples):
-                            edge_tuples.append(normal)
-                            #edges.append({"from":arango_mongo_nodes[res["_from"]],"to":arango_mongo_nodes[res["_to"]],"coauthorships":res["weight"]})
-                            edges.append({
-                                "coauthorships":res["weight"],
-                                "source":arango_mongo_nodes[res["_from"]],
-                                "sourceName":"",
-                                "target":arango_mongo_nodes[res["_to"]],
-                                "targetName":"",
-                                "size":res["weight"]
-                            })
-            del(arango_nodes)
-            del(arango_mongo_nodes)
-            del(edge_tuples)
-            total=max([e["coauthorships"] for e in edges]) if len(edges)>0 else 1
-            degrees={}
-            num_nodes=len(nodes)
-            for edge in edges:
-                edge["coauthorships"]=edge["coauthorships"]
-                edge["size"]=10*log(1+edge["coauthorships"]/total,2)
-                if edge["source"] in degrees.keys():
-                    degrees[edge["source"]]+=1
-                else:
-                    degrees[edge["source"]]=1
-                if edge["target"] in degrees.keys():
-                    degrees[edge["target"]]+=1
-                else:
-                    degrees[edge["target"]]=1
-            for node in nodes:
-                if node["id"] in degrees.keys():
-                    node["size"]=50*log(1+degrees[node["id"]]/(num_nodes-1),2)
-                    node["degree"]=degrees[node["id"]]
-            entry["coauthors_network"]={"nodes":nodes,"edges":edges}
-        else:
-            au=self.colav_db["authors"].find_one({"_id":idx})
-            aff=""
-            if au:
-                if "affiliations" in au.keys():
-                    if len(au["affiliations"])>0:
-                        aff=au["affiliations"][0]
-
-            entry["coauthors_network"]={"nodes":[{
-                "id":idx,
-                "degree":0,
-                "size":10,
-                "label":au["full_name"] if  au  else "",
-                "affiliation":aff["name"] if aff!="" else "",
-            }],"edges":[]}'''
+        db_reg=self.colav_db["authors"].find_one({"_id":ObjectId(idx)})
+        if db_reg:
+            if "coauthors_network" in db_reg.keys():
+                entry["coauthors_network"]=db_reg["coauthors_network"]
 
         return {"data":entry}
 
@@ -709,17 +629,14 @@ class AuthorsApp(sdsPluginBase):
                 for aff in author["affiliations"]:
                     aff_entry={}
                     group_entry={}
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
-                    if aff_db:
-                        aff_entry={"name":aff_db["name"],"id":aff_db["_id"]}
-                    branches=[]
-                    if "branches" in aff.keys():
-                        for branch in aff["branches"]:
-                            if "id" in branch.keys():
-                                branch_db=self.colav_db["branches"].find_one({"_id":branch["id"]})
-                                if branch_db and branch_db["type"] != "department" and branch_db["type"]!="faculty":
-                                    group_entry= ({"name":branch_db["name"],"type":branch_db["type"],"id":branch_db["_id"]})
-                                    affiliations.append(group_entry)
+                    if not "id" in aff.keys():
+                        continue
+                    if "type" in aff.keys():
+                        if aff["type"]=="group":
+                            group_entry= ({"name":aff["name"],"id":aff["id"]})
+                            affiliations.append(group_entry)
+                    else:
+                        aff_entry={"name":aff["name"],"id":aff["id"]}
 
                     affiliations.append(aff_entry)
                 au_entry["affiliations"]=affiliations
@@ -733,7 +650,6 @@ class AuthorsApp(sdsPluginBase):
             "open_access":open_access,
             "venn_source":self.get_venn(venn_query),
             "types":tipos
-
             }
 
     def get_production_by_type(self,idx=None,max_results=100,page=1,start_year=None,end_year=None,sort=None,direction=None,tipo=None):
@@ -803,19 +719,13 @@ class AuthorsApp(sdsPluginBase):
         for doc in cursor:
             authors=[]
             for author in doc["authors"]:
-                au_entry={}
-                author_db=self.colav_db["authors"].find_one({"_id":author["id"]})
-                if author_db:
-                    au_entry={"full_name":author_db["full_name"],"id":author_db["_id"]}
-                affiliations=[]
+                au_entry={"full_name":author["full_name"],"id":author["id"],"affiliation":{}}
                 for aff in author["affiliations"]:
-                    aff_entry={}
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
-                    if aff_db:
-                        aff_entry={"name":aff_db["name"],"id":aff_db["_id"]}
-                    
-                    affiliations.append(aff_entry)
-                au_entry["affiliations"]=affiliations
+                    if "type" in aff.keys():
+                        if aff["type"]=="group":
+                            au_entry["affiliation"]["group"]={"name":aff["name"],"id":aff["id"]}        
+                    else:
+                        au_entry["affiliation"]["institution"]={"name":aff["name"],"id":aff["id"]}
                 authors.append(au_entry)
 
             try:
@@ -830,7 +740,8 @@ class AuthorsApp(sdsPluginBase):
                     "year_published":doc["year_published"],
                     "open_access_status":doc["open_access_status"],
                     "source":{"name":source["title"],"id":str(source["_id"])},
-                    "authors":authors
+                    "authors":authors,
+                    "subjects":[{"name":reg["name"],"id":reg["id"]}for reg in doc["subjects"]] if "subjects" in doc.keys() else  []
                     })
 
             except:
@@ -921,7 +832,7 @@ class AuthorsApp(sdsPluginBase):
             if "affiliations" in paper["authors"][0].keys():
                 if len(paper["authors"][0]["affiliations"])>0:
                     csv_text+="\t"+str(paper["authors"][0]["affiliations"][0]["id"])
-                    aff_db=self.colav_db["institutions"].find_one({"_id":paper["authors"][0]["affiliations"][0]["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":paper["authors"][0]["affiliations"][0]["id"]})
             if aff_db:
                 csv_text+="\t"+aff_db["name"]
                 country_entry=""
@@ -986,7 +897,7 @@ class AuthorsApp(sdsPluginBase):
                 affiliations=[]
                 for aff in author["affiliations"]:
                     aff_entry=aff
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
                     if aff_db:
                         aff_entry=aff_db
                     branches=[]

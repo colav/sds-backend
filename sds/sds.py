@@ -48,7 +48,7 @@ class sds:
         self.dbclient = MongoClient(dburi)
         self.ip = ip
         self.port = port
-        self.colav_db=self.dbclient["colombia"]
+        self.colav_db=self.dbclient["sds"]
         self.info_level = info_level
         self.apikey = apikey
         self.apidoc_dir = 'sds_website'

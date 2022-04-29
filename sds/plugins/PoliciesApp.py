@@ -18,8 +18,15 @@ class PoliciesApp(sdsPluginBase):
                 "name":policy["name"],
                 "description":policy["description"],
                 "abbreviations":policy["abbreviations"][0],
-                "index":policy["ids"]["ODS"] if "ODS" in policy["ids"].keys() else ""
+                "index":""
             }
+            if len(policy["index"])>0:
+                indexes=[]
+                for index in policy["index"]:
+                    indexes.append(index["index"])
+                    entry["index"]+=str(int(index["index"]))+"."
+                
+                entry["index"]=entry["index"][:-1]
 
         if(idx):
             result=self.colav_db['documents'].find({"policies.id":ObjectId(idx)},{"year_published":1}).sort([("year_published",ASCENDING)]).limit(1)
@@ -276,17 +283,13 @@ class PoliciesApp(sdsPluginBase):
                 for aff in author["affiliations"]:
                     aff_entry={}
                     group_entry={}
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
                     if aff_db:
                         aff_entry={"name":aff_db["name"],"id":aff_db["_id"]}
-                    branches=[]
-                    if "branches" in aff.keys():
-                        for branch in aff["branches"]:
-                            if "id" in branch.keys():
-                                branch_db=self.colav_db["branches"].find_one({"_id":branch["id"]})
-                                if branch_db and branch_db["type"] != "department" and branch_db["type"]!="faculty":
-                                    group_entry= ({"name":branch_db["name"],"type":branch_db["type"],"id":branch_db["_id"]})
-                                    affiliations.append(group_entry)
+                    if "type" in aff.keys():
+                        if aff["type"]=="group":
+                            group_entry= ({"name":aff["name"],"type":aff["type"],"id":aff["id"]})
+                            affiliations.append(group_entry)
 
                     affiliations.append(aff_entry)
                 au_entry["affiliations"]=affiliations
@@ -376,7 +379,7 @@ class PoliciesApp(sdsPluginBase):
                 affiliations=[]
                 for aff in author["affiliations"]:
                     aff_entry={}
-                    aff_db=self.colav_db["institutions"].find_one({"_id":aff["id"]})
+                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
                     if aff_db:
                         aff_entry={"name":aff_db["name"],"id":aff_db["_id"]}
                     
@@ -396,7 +399,8 @@ class PoliciesApp(sdsPluginBase):
                     "year_published":doc["year_published"],
                     "open_access_status":doc["open_access_status"],
                     "source":{"name":source["title"],"id":str(source["_id"])},
-                    "authors":authors
+                    "authors":authors,
+                    "subjects":[{"name":reg["name"],"id":reg["id"]}for reg in doc["subjects"]] if "subjects" in doc.keys() else  []
                     })
 
             except:
@@ -440,28 +444,32 @@ class PoliciesApp(sdsPluginBase):
 
         data=[]
         names=[]
-        for key,val in result["subjects_by_year"].items():
-            year=int(key)
+
+        for reg in result["subjects_by_year"]:
+            year=int(reg["year"])
             if start_year:
                 if start_year>year:
                     continue
             if end_year:
                 if end_year<year:
                     continue
-            for sub in val:
+            for sub in reg["subjects"]:
                 if sub["name"] in names:
-                    data[names.index(sub["name"])]["value"]+=sub["value"]
+                    data[names.index(sub["name"])]["products"]+=sub["products"]
                 else:
                     data.append(sub)
                     names.append(sub["name"])
         
-        sorted_data=sorted(data,key=lambda x:x["value"],reverse=True)
+        sorted_data=sorted(data,key=lambda x:x["products"],reverse=True)
                 
         return {"data":sorted_data[:limit],"total":len(data)}
     
-    def get_institutions(self,idx=None,page=1,max_results=100,sort="citations",direction="descending"):
-        
-        total_results = self.colav_db["institutions"].count_documents({"policies.id":ObjectId(idx)})
+    def get_institutions(self,idx=None,page=1,max_results=10,institutions="",groups="",sort="citations",direction="descending"):
+        search_dict={"types":{"$ne":"group"},"policies.id":ObjectId(idx)}
+        if institutions:
+            institutions_list=[ObjectId(inst) for inst in institutions.split()]
+            search_dict["_id"]={"$in":institutions_list}
+        total_results = self.colav_db["affiliations"].count_documents(search_dict)
 
         if not page:
             page=1
@@ -482,24 +490,57 @@ class PoliciesApp(sdsPluginBase):
 
         skip = (max_results*(page-1))
 
-        cursor=self.colav_db["institutions"].find({"policies.id":ObjectId(idx)})
+        cursor=self.colav_db["affiliations"].find(search_dict)
 
-        cursor=cursor.skip(skip).limit(max_results)
-
+        #SORTING here is wrong, it should sort from citations and production in the subject
         if sort=="citations" and direction=="ascending":
             cursor.sort([("citations_count",ASCENDING)])
         if sort=="citations" and direction=="descending":
             cursor.sort([("citations_count",DESCENDING)])
+        if sort=="production" and direction=="ascending":
+            cursor.sort([("products_count",ASCENDING)])
+        if sort=="production" and direction=="descending":
+            cursor.sort([("products_count",DESCENDING)])
 
-        entry = []
+        cursor=cursor.skip(skip).limit(max_results)
+
+        data = []
         for reg in cursor:
-            entry.append({"name":reg["name"],"id":reg["_id"],"citations":reg["citations_count"]})
+            entry={
+                "name":reg["name"],
+                "id":reg["_id"],
+                "plot":[],
+                "citations_count":reg["citations_count"],
+                "products_count":reg["products_count"],
+                "word_cloud":[sub for sub in reg["subjects"] if str(sub["id"])!=idx] if "subjects" in reg.keys() else []
+            }
+            if "subjects" in reg.keys():
+                for sub in reg["subjects"]:
+                    if str(sub["id"])==idx:
+                        entry["citations_count"]=reg["citations_count"]
+                        entry["products_count"]=reg["products_count"]
+                        break
+            if "subjects_by_year" in reg.keys():
+                for year_sub in reg["subjects_by_year"]:
+                    for sub in year_sub["subjects"]:
+                        if str(sub["id"])==idx:
+                            entry["plot"].append({
+                                "year":year_sub["year"],
+                                "products":sub["products"],
+                                "citations":sub["citations"]
+                            })
+            
+            entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
+            data.append(entry)
 
-        return {"total":total_results,"page":page,"count":len(entry),"data":entry}
+        return {"total":total_results,"page":page,"count":len(data),"data":data}
     
-    def get_groups(self,idx=None,page=1,max_results=100,sort="citations",direction="descending"):
-        
-        total_results = self.colav_db["branches"].count_documents({"type":"group","policies.id":ObjectId(idx)})
+    def get_groups(self,idx=None,page=1,max_results=100,institutions="",groups="",sort="citations",direction="descending"):
+        search_dict={"types":"group","policies.id":ObjectId(idx)}
+        if institutions:
+            institutions_list=[ObjectId(inst) for inst in institutions.split()]
+            search_dict["relations.id"]={"$in":institutions_list}
+        total_results = self.colav_db["affiliations"].count_documents(search_dict)
 
         if not page:
             page=1
@@ -520,20 +561,57 @@ class PoliciesApp(sdsPluginBase):
 
         skip = (max_results*(page-1))
 
-        cursor=self.colav_db["branches"].find({"type":"group","policies.id":ObjectId(idx)})
+        cursor=self.colav_db["affiliations"].find(search_dict)
 
-        cursor=cursor.skip(skip).limit(max_results)
-
+        #SORTING here is wrong, it should sort from citations and production in the subject
         if sort=="citations" and direction=="ascending":
             cursor.sort([("citations_count",ASCENDING)])
         if sort=="citations" and direction=="descending":
             cursor.sort([("citations_count",DESCENDING)])
+        if sort=="production" and direction=="ascending":
+            cursor.sort([("products_count",ASCENDING)])
+        if sort=="production" and direction=="descending":
+            cursor.sort([("products_count",DESCENDING)])
 
-        entry = []
+        cursor=cursor.skip(skip).limit(max_results)
+
+        data = []
         for reg in cursor:
-            entry.append({"name":reg["name"],"id":reg["_id"],"citations":reg["citations_count"]})
+            entry={
+                "name":reg["name"],
+                "id":reg["_id"],
+                "institution":{},
+                "plot":[],
+                "citations_count":reg["citations_count"],
+                "products_count":reg["products_count"],
+                "word_cloud":[sub for sub in reg["subjects"] if str(sub["id"])!=idx]
+            }
+            if "relations" in reg.keys():
+                if len(reg["relations"])>0:
+                    entry["institution"]={
+                        "name":reg["relations"][0]["name"],
+                        "id":reg["relations"][0]["id"]
+                    }
+            if "subjects" in reg.keys():
+                for sub in reg["subjects"]:
+                    if str(sub["id"])==idx:
+                        entry["citations_count"]=reg["citations_count"]
+                        entry["products_count"]=reg["products_count"]
+                        break
+            if "subjetcs_by_year" in reg.keys():
+                for year_sub in reg["subjects_by_year"]:
+                    for sub in year_sub["subjects"]:
+                        if str(sub["id"])==idx:
+                            entry["plot"].append({
+                                "year":year_sub["year"],
+                                "products":sub["products"],
+                                "citations":sub["citations"]
+                            })
+            
+            entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
+            data.append(entry)
 
-        return {"total":total_results,"page":page,"count":len(entry),"data":entry}
+        return {"total":total_results,"page":page,"count":len(data),"data":data}
 
     def get_authors(self,idx=None,page=1,max_results=100):
         if idx:
@@ -544,11 +622,11 @@ class PoliciesApp(sdsPluginBase):
             pipeline.extend([
                 {"$unwind":"$authors"},
                 {"$project":{"authors":1,"citations_count":1}},
-                {"$group":{"_id":"$authors.id","papers_count":{"$sum":1},"citations_count":{"$sum":"$citations_count"},"author":{"$first":"$authors"}}},
+                {"$group":{"_id":"$authors.id","products_count":{"$sum":1},"citations_count":{"$sum":"$citations_count"},"author":{"$first":"$authors"}}},
                 {"$sort":{"citations_count":-1}},
                 {"$project":{"author.id":1,"author.full_name":1,"author.affiliations.name":1,"author.affiliations.id":1,
-                    "author.affiliations.branches.name":1,"author.affiliations.branches.type":1,"author.affiliations.branches.id":1,
-                    "papers_count":1,"citations_count":1}}
+                    "author.affiliations.name":1,"author.affiliations.type":1,"author.affiliations.id":1,
+                    "products_count":1,"citations_count":1}}
             ])
 
             total_results = self.colav_db["authors"].count_documents({"policies.id":ObjectId(idx)})
@@ -581,22 +659,27 @@ class PoliciesApp(sdsPluginBase):
             for reg in result:
                 group_name = ""
                 group_id = ""
+                inst_name=""
+                inst_id=""
                 if "author" in reg.keys():
                     if "affiliations" in reg["author"].keys():
                         if len(reg["author"]["affiliations"])>0:
-                            if "branches" in reg["author"]["affiliations"][0]:
-                                for i in range(len(reg["author"]["affiliations"][0]["branches"])):    
-                                    if reg["author"]["affiliations"][0]["branches"][i]["type"]=="group":
-                                        group_name = reg["author"]["affiliations"][0]["branches"][i]["name"]
-                                        group_id =   reg["author"]["affiliations"][0]["branches"][i]["id"]    
+                            for aff in reg["author"]["affiliations"]:
+                                if "type" in aff.keys():
+                                    if aff["type"]=="group":
+                                        group_name = aff["name"]
+                                        group_id =   aff["id"]
+                                else:
+                                    inst_name=aff["name"]
+                                    inst_id=aff["id"]  
 
                             entry.append({
                                 "id":reg["_id"],
                                 "name":reg["author"]["full_name"],
-                                "papers_count":reg["papers_count"],
+                                "products_count":reg["products_count"],
                                 "citations_count":reg["citations_count"],
-                                "affiliation":{"institution":{"name":reg["author"]["affiliations"][0]["name"], 
-                                                    "id":reg["author"]["affiliations"][0]["id"]},
+                                "affiliation":{"institution":{"name":inst_name, 
+                                                    "id":inst_id},
                                             "group":{"name":group_name, "id":group_id}}
                             })
             
