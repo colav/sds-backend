@@ -364,11 +364,11 @@ class InstitutionsApp(sdsPluginBase):
                     }
         for key,val in countries.items():
             countries[key]["log_count"]=log(val["count"])
-        for idx,feat in enumerate(geojson["features"]):
+        for i,feat in enumerate(geojson["features"]):
             if feat["properties"]["country_code"] in countries.keys():
                alpha2=feat["properties"]["country_code"]
-               geojson["features"][idx]["properties"]["count"]=countries[alpha2]["count"]
-               geojson["features"][idx]["properties"]["log_count"]=countries[alpha2]["log_count"]
+               geojson["features"][i]["properties"]["count"]=countries[alpha2]["count"]
+               geojson["features"][i]["properties"]["log_count"]=countries[alpha2]["log_count"]
 
 
         entry["geo"]=geojson
