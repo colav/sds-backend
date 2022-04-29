@@ -628,23 +628,15 @@ class InstitutionsApp(sdsPluginBase):
         entry=[]
 
         for doc in cursor:
-            
             authors=[]
             for author in doc["authors"]:
-                au_entry={}
-                author_db=self.colav_db["authors"].find_one({"_id":author["id"]})
-                if author_db:
-                    au_entry={"full_name":author_db["full_name"],"id":author_db["_id"]}
-                affiliations=[]
+                au_entry={"full_name":author["full_name"],"id":author["id"],"affiliation":{}}
                 for aff in author["affiliations"]:
-                    aff_entry={}
-                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
-                    if aff_db:
-                        aff_entry={"institution":{"name":aff_db["name"],"id":aff_db["_id"]}}
-                        break
+                    if "type" in aff.keys():
+                        if aff["type"]=="group":
+                            au_entry["affiliation"]["group"]={"name":aff["name"],"id":aff["id"]}        
                     else:
-                        aff_entry={"institution":{"name":"","id":""}}
-                    au_entry["affiliation"]=aff_entry
+                        au_entry["affiliation"]["institution"]={"name":aff["name"],"id":aff["id"]}
                 authors.append(au_entry)
 
             try:
