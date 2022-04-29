@@ -512,7 +512,7 @@ class PoliciesApp(sdsPluginBase):
                 "plot":[],
                 "citations_ratio":"0/"+str(reg["citations_count"]),
                 "products_ratio":"0/"+str(reg["products_count"]),
-                "word_cloud":[sub for sub in reg["subjects"] if str(sub["id"])!=idx]
+                "word_cloud":[sub for sub in reg["subjects"] if str(sub["id"])!=idx] if "subjects" in reg.keys() else []
             }
             if "subjects" in reg.keys():
                 for sub in reg["subjects"]:
@@ -520,14 +520,15 @@ class PoliciesApp(sdsPluginBase):
                         entry["citations_ratio"]=str(sub["citations"])+"/"+str(reg["citations_count"])
                         entry["products_ratio"]=str(sub["products"])+"/"+str(reg["products_count"])
                         break
-            for year_sub in reg["subjects_by_year"]:
-                for sub in year_sub["subjects"]:
-                    if str(sub["id"])==idx:
-                        entry["plot"].append({
-                            "year":year_sub["year"],
-                            "products":sub["products"],
-                            "citations":sub["citations"]
-                        })
+            if "subjects_by_year" in reg.keys():
+                for year_sub in reg["subjects_by_year"]:
+                    for sub in year_sub["subjects"]:
+                        if str(sub["id"])==idx:
+                            entry["plot"].append({
+                                "year":year_sub["year"],
+                                "products":sub["products"],
+                                "citations":sub["citations"]
+                            })
             
             entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
             data.append(entry)
