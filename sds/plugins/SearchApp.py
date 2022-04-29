@@ -64,6 +64,7 @@ class SearchApp(sdsPluginBase):
 
     def search_author(self,keywords="",affiliation="",country="",max_results=100,page=1,
         group_id=None,institution_id=None,sort="citations"):
+        search_dict={}
         if keywords:
             cursor=self.colav_db['authors'].find({"$text":{"$search":keywords},"external_ids":{"$ne":[]}},{ "score": { "$meta": "textScore" } }).sort([("score", { "$meta": "textScore" } )])
             filter_cursor=self.colav_db['authors'].find({"$text":{"$search":keywords},"external_ids":{"$ne":[]}},{ "score": { "$meta": "textScore" } }).sort([("score", { "$meta": "textScore" } )])
@@ -108,9 +109,14 @@ class SearchApp(sdsPluginBase):
                                 entry = {"id":str(aff["id"]),"name":aff["name"]}
                                 institution_filters.append(entry)
 
+        def_list=[]
         if keywords and group_id:
-            cursor=self.colav_db['authors'].find({"$text":{"$search":keywords},"external_ids":{"$ne":[]},
-                "affiliations.id":ObjectId(group_id)},{ "score": { "$meta": "textScore" } }).sort([("score", { "$meta": "textScore" } )])
+            for group in group_id.split():
+                def_list.append(ObjectId(group))
+            search_dict["affiliations.id"]={"$in":def_list}
+            search_dict["$text"]={"$search":keywords}
+            search_dict["external_ids"]={"$ne":[]}
+            cursor=self.colav_db['authors'].find(search_dict,{ "score": { "$meta": "textScore" } }).sort([("score", { "$meta": "textScore" } )])
             pipeline=[{"$match":{"$text":{"$search":keywords},"external_ids":{"$ne":[]}}}]
             aff_pipeline=[
                 {"$match":{"$text":{"$search":keywords},"external_ids":{"$ne":[]}}},
@@ -120,7 +126,12 @@ class SearchApp(sdsPluginBase):
             ]
         
         if keywords and institution_id:
-            cursor=self.colav_db['authors'].find({"$text":{"$search":keywords},"external_ids":{"$ne":[]}},{ "score": { "$meta": "textScore" } }).sort([("score", { "$meta": "textScore" } )])
+            for inst in institution_id.split():
+                def_list.append(ObjectId(inst))
+            search_dict["affiliations.id"]={"$in":def_list}
+            search_dict["$text"]={"$search":keywords}
+            search_dict["external_ids"]={"$ne":[]}
+            cursor=self.colav_db['authors'].find(search_dict,{ "score": { "$meta": "textScore" } }).sort([("score", { "$meta": "textScore" } )])
             pipeline=[{"$match":{"$text":{"$search":keywords},"external_ids":{"$ne":[]}}}]
             aff_pipeline=[
                 {"$match":{"$text":{"$search":keywords},"external_ids":{"$ne":[]}}},
@@ -130,7 +141,11 @@ class SearchApp(sdsPluginBase):
             ]
 
         if keywords=="" and institution_id:
-            cursor=self.colav_db['authors'].find({"external_ids":{"$ne":[]}})
+            for inst in institution_id.split():
+                def_list.append(ObjectId(inst))
+            search_dict["affiliations.id"]={"$in":def_list}
+            search_dict["external_ids"]={"$ne":[]}
+            cursor=self.colav_db['authors'].find(search_dict)
             pipeline=[{"$match":{"external_ids":{"$ne":[]}}}]
             aff_pipeline=[
                 {"$match":{"external_ids":{"$ne":[]}}},
@@ -140,7 +155,11 @@ class SearchApp(sdsPluginBase):
             ]
 
         if keywords=="" and group_id:
-            cursor=self.colav_db['authors'].find({"external_ids":{"$ne":[]},"affiliations.id":ObjectId(group_id)})
+            for group in group_id.split():
+                def_list.append(ObjectId(group))
+            search_dict["affiliations.id"]={"$in":def_list}
+            search_dict["external_ids"]={"$ne":[]}
+            cursor=self.colav_db['authors'].find(search_dict)
             pipeline=[{"$match":{"external_ids":{"$ne":[]}}}]
             aff_pipeline=[
                 {"$match":{"external_ids":{"$ne":[]}}},
