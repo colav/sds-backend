@@ -204,7 +204,7 @@ class SearchApp(sdsPluginBase):
                 entry={
                     "id":author["_id"],
                     "name":author["full_name"],
-                    "papers_count"   :author["products_count"],
+                    "products_count":author["products_count"],
                     "citations_count":author["citations_count"],
                     "affiliation":{"institution":{"name":"","id":""}}
                 }
@@ -327,7 +327,7 @@ class SearchApp(sdsPluginBase):
                 entry={
                     "name":entity["name"],
                     "id":str(entity["_id"]),
-                    "papers_count":entity["products_count"],
+                    "products_count":entity["products_count"],
                     "citations_count":entity["citations_count"],
                     "affiliation":{"institution":{"name":"","id":""}}
 
@@ -412,7 +412,7 @@ class SearchApp(sdsPluginBase):
                 entry={
                     "id":institution["_id"],
                     "name":institution["name"],
-                    "papers_count":institution["products_count"],
+                    "products_count":institution["products_count"],
                     "citations_count":institution["citations_count"],
                     "logo":institution["logo_url"]
                 }
