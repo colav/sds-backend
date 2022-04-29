@@ -38,11 +38,22 @@ class CompendiumApp(sdsPluginBase):
                 res=self.colav_db["affiliations"].find_one({"_id":ObjectId(group),"types":"group"})
                 if res:
                     groups_filter.append({"name":res["name"],"id":group})
+                    for pby in res["products_by_year"]:
+                        if pby["year"]<initial_year:
+                            initial_year=pby["year"]
+                        if pby["year"]>final_year:
+                            final_year=pby["year"]
         if len(institutions_list)!=0:
             for inst in institutions_list:
                 res=self.colav_db["affiliations"].find_one({"_id":ObjectId(inst)})
                 if res:
                     institutions_filter.append({"name":res["name"],"id":group})
+                    if initial_year==9999 and final_year==0:
+                        for pby in res["products_by_year"]:
+                            if pby["year"]<initial_year:
+                                initial_year=pby["year"]
+                            if pby["year"]>final_year:
+                                final_year=pby["year"]
 
         if len(groups_filter)==0:
             search_dict={}
