@@ -373,101 +373,10 @@ class InstitutionsApp(sdsPluginBase):
 
         entry["geo"]=geojson
 
-        '''nodes=[]
-        edges=[]
-
-        nodes_idlist=[]
-        edge_tuples=[]
-        arango_edges=[]
-        arango_nodes=[]
-        arango_mongo_nodes={}
-        query="FOR c IN institutions FILTER c.mongo_id=='"+idx+"' RETURN {_id:c._id,name:c.name}"
-        result=list(self.arangodb.AQLQuery(query,rawResults=True,batchSize=1))
-        if result:
-            arangoid=result[0]["_id"]
-            nodes.append({
-                    "id":idx,
-                    "degree":0,
-                    "size":0,
-                    "label":result[0]["name"]
-                })
-            query="FOR v,e,p IN 1..1 ANY '"+arangoid+"' GRAPH institutions_coauthorship RETURN {mongo_id:v.mongo_id,_id:v._id,name:v.name,weight:e.weight}" 
-            for vertex in self.arangodb.AQLQuery(query,rawResults=True,batchSize=1):
-                arango_nodes.append(vertex["_id"])
-                
-                arango_mongo_nodes[vertex["_id"]]=vertex["mongo_id"]
-                node={
-                    "id":vertex["mongo_id"],
-                    "degree":0,
-                    "size":0,
-                    "label":vertex["name"]
-                }
-                if not node in nodes:
-                    nodes.append(node)
-                normal=(idx,vertex["mongo_id"])
-                rever=(vertex["mongo_id"],idx)
-                if not (normal in edge_tuples or rever in edge_tuples):
-                    edge_tuples.append(normal)
-                    edges.append({
-                        "coauthorships":vertex["weight"],
-                        "source":idx,
-                        "sourceName":result[0]["name"],
-                        "target":vertex["mongo_id"],
-                        "targetName":vertex["name"],
-                        "size":vertex["weight"]
-                    })
-
-            for node in arango_nodes:
-                query="FOR e IN institution_coauthorship FILTER e._from=='"+node+"' RETURN {_from:e._from,_to:e._to,weight:e.weight}"
-                for res in self.arangodb.AQLQuery(query,rawResults=True,batchSize=1):
-                    if res["_to"] in arango_nodes and res["_from"] in arango_nodes:
-                        if res["_to"]==res["_from"]:
-                            continue
-                        normal=(arango_mongo_nodes[res["_from"]],arango_mongo_nodes[res["_to"]])
-                        rever=(arango_mongo_nodes[res["_to"]],arango_mongo_nodes[res["_from"]])
-                        if not (normal in edge_tuples or rever in edge_tuples):
-                            edge_tuples.append(normal)
-                            #edges.append({"from":arango_mongo_nodes[res["_from"]],"to":arango_mongo_nodes[res["_to"]],"coauthorships":res["weight"]})
-                            edges.append({
-                                "coauthorships":res["weight"],
-                                "source":arango_mongo_nodes[res["_from"]],
-                                "sourceName":"",
-                                "target":arango_mongo_nodes[res["_to"]],
-                                "targetName":"",
-                                "size":res["weight"]
-                            })
-            del(arango_nodes)
-            del(arango_mongo_nodes)
-            del(edge_tuples)
-            total=max([e["coauthorships"] for e in edges]) if len(edges)>0 else 1
-            degrees={}
-            num_nodes=len(nodes)
-            for edge in edges:
-                edge["coauthorships"]=edge["coauthorships"]
-                edge["size"]=10*log(1+edge["coauthorships"]/total,2)
-                if edge["source"] in degrees.keys():
-                    degrees[edge["source"]]+=1
-                else:
-                    degrees[edge["source"]]=1
-                if edge["target"] in degrees.keys():
-                    degrees[edge["target"]]+=1
-                else:
-                    degrees[edge["target"]]=1
-            for node in nodes:
-                if node["id"] in degrees.keys():
-                    node["size"]=50*log(1+degrees[node["id"]]/(num_nodes-1),2)
-                    node["degree"]=degrees[node["id"]]
-            entry["institutions_network"]={"nodes":nodes,"edges":edges}
-        else:
-            aff=self.colav_db["institutions"].find_one({"_id":idx})
-
-            entry["institutions_network"]={"nodes":[{
-                "id":idx,
-                "degree":0,
-                "size":10,
-                "label":aff["full_name"] if aff else "",
-            }],"edges":[]}'''
-
+        db_reg=self.colav_db["affiliations"].find_one({"_id":ObjectId(idx)})
+        if db_reg:
+            if "coauthors_network" in db_reg.keys():
+                entry["coauthors_network"]=db_reg["coauthors_network"]
 
         return {"total":total_results,"page":page,"count":len(entry["institutions"]),"data":entry}
 

@@ -447,6 +447,10 @@ class GroupsApp(sdsPluginBase):
                geojson["features"][idx]["properties"]["log_count"]=countries[alpha2]["log_count"]
 
         entry["geo"]=geojson
+        db_reg=self.colav_db["affiliations"].find_one({"_id":ObjectId(idx)})
+        if db_reg:
+            if "coauthors_network" in db_reg.keys():
+                entry["coauthors_network"]=db_reg["coauthors_network"]
                         
         return {"data":entry}
 
