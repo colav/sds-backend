@@ -103,7 +103,7 @@ class CallsApp(sdsPluginBase):
                 ('page', str(p)),
             )
             response = requests.get('https://minciencias.gov.co/convocatorias-asctei?order=field_fecha_de_apertura&sort=asc', headers=headers, params=params,verify=False)
-            soup = BeautifulSoup(response.text,'lxml')
+            soup = BeautifulSoup(response.text,'html.parser')
             box = soup.find_all('tr',class_='odd')
             calls_odd = []
             for e in box:
