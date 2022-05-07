@@ -521,11 +521,12 @@ class PoliciesApp(sdsPluginBase):
                         entry["products_count"]=reg["products_count"]
                         break
             if "subjects_by_year" in reg.keys():
-                for year_sub in reg["subjects_by_year"]:
-                    for sub in year_sub["subjects"]:
+                for val in reg["subjects_by_year"]:
+                    year=val["year"]
+                    for sub in val["subjects"]:
                         if str(sub["id"])==idx:
                             entry["plot"].append({
-                                "year":year_sub["year"],
+                                "year":year,
                                 "products":sub["products"],
                                 "citations":sub["citations"]
                             })
