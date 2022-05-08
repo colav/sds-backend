@@ -308,9 +308,9 @@ class GroupsApp(sdsPluginBase):
             return None
 
         if not "subjects_by_year" in result.keys():
-            return None
+            return {"data":{},"total":0}
         if not result["subjects_by_year"]:
-            return None
+            return {"data":{},"total":0}
 
         data=[]
         names=[]
