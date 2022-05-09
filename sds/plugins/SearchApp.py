@@ -13,7 +13,7 @@ class SearchApp(sdsPluginBase):
             cursor=self.colav_db["subjects"].find()
 
         if sort=="citations":
-            cursor.sort([("citations_count",DESCENDING)])
+            cursor.sort([("cited_by_count",DESCENDING)])
         else:
             cursor.sort([("works_count",DESCENDING)])
 
@@ -44,6 +44,7 @@ class SearchApp(sdsPluginBase):
                     "name":subject["name"],
                     "id":subject["_id"],
                     "products_count":subject["works_count"],
+                    "citations_count":subject["cited_by_count"]
                 }
                 if "international" in subject.keys():
                     if "display_name" in subject["international"].keys():
