@@ -804,5 +804,11 @@ class PoliciesApp(sdsPluginBase):
                 status=204,
                 mimetype='application/json'
                 )
+        else:
+            response = self.app.response_class(
+                response=self.json.dumps({}),
+                status=400,
+                mimetype='application/json'
+            )
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response
