@@ -76,7 +76,7 @@ class SearchApp(sdsPluginBase):
                     "products_count":subject["works_count"],
                     "citations_count":subject["cited_by_count"]
                 }
-            subjects_list.append(entry) 
+                subjects_list.append(entry) 
 
             return subjects_list
         else:
