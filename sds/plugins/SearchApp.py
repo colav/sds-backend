@@ -65,7 +65,7 @@ class SearchApp(sdsPluginBase):
 
     def search_subjects_pbi(self):
         
-        cursor=self.colav_db["subjects"].find()
+        cursor=self.colav_db["subjects"].find({},{"name":1,"works_count":1,"cited_by_count":1})
 
         if cursor:
             subjects_list=[]
@@ -907,7 +907,26 @@ class SearchApp(sdsPluginBase):
             return None
 
     def search_documents_pbi(self):
+        open_access=[]
+
+        val=self.colav_db['documents'].count_documents({"open_access_status":"green" })
+        if val!=0:
+            open_access.append({"type":"green" ,"value":val})
+        val=self.colav_db['documents'].count_documents({"open_access_status":"gold" })
+        if val!=0:
+            open_access.append({"type":"gold" ,"value":val})
+        val=self.colav_db['documents'].count_documents({"open_access_status":"bronze" })
+        if val!=0:
+            open_access.append({"type":"bronze" ,"value":val})
+        val=self.colav_db['documents'].count_documents({"open_access_status":"closed" })
+        if val!=0:
+            open_access.append({"type":"closed" ,"value":val})
+        val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid" })
+        if val!=0:
+            open_access.append({"type":"hybrid" ,"value":val})
+
         cursor=self.colav_db['documents'].find()
+        
         products={}
         if cursor:
             for paper in cursor:
@@ -938,7 +957,7 @@ class SearchApp(sdsPluginBase):
                     table.append(entry)
 
             return {
-                "open_access":self.get_venn({}),
+                "open_access":open_access,
                 "products":table
                 }
         else:
