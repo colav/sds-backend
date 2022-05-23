@@ -13,7 +13,7 @@ class SearchApp(sdsPluginBase):
             cursor=self.colav_db["subjects"].find()
 
         if sort=="citations":
-            cursor.sort([("citations_count",DESCENDING)])
+            cursor.sort([("cited_by_count",DESCENDING)])
         else:
             cursor.sort([("works_count",DESCENDING)])
 
@@ -44,6 +44,7 @@ class SearchApp(sdsPluginBase):
                     "name":subject["name"],
                     "id":subject["_id"],
                     "products_count":subject["works_count"],
+                    "citations_count":subject["cited_by_count"]
                 }
                 if "international" in subject.keys():
                     if "display_name" in subject["international"].keys():
@@ -59,6 +60,25 @@ class SearchApp(sdsPluginBase):
                     "data":subjects_list
                 }
 
+        else:
+            return None
+
+    def search_subjects_pbi(self):
+        
+        cursor=self.colav_db["subjects"].find()
+
+        if cursor:
+            subjects_list=[]
+            for subject in cursor:
+                entry={
+                    "name":subject["name"],
+                    "id":subject["_id"],
+                    "products_count":subject["works_count"],
+                    "citations_count":subject["cited_by_count"]
+                }
+            subjects_list.append(entry) 
+
+            return subjects_list
         else:
             return None
 
@@ -699,7 +719,6 @@ class SearchApp(sdsPluginBase):
         sort="citations",direction="descending",tipo="article",institution_id=None,
         group_id=None):
 
-
         if start_year:
             try:
                 start_year=int(start_year)
@@ -808,15 +827,6 @@ class SearchApp(sdsPluginBase):
                     cursor=self.colav_db['documents'].find({"publication_type.type":tipo})
                     aff_pipeline=[]
 
-        #¿ESTO PA' QUÉ?
-        '''aff_pipeline.extend([
-                {"$unwind":"$affiliations"},{"$project":{"affiliations":1}},
-                {"$group":{"_id":"$_id","affiliation":{"$last":"$affiliations"}}},
-                {"$group":{"_id":"$affiliation"}}
-            ])'''
-        #affiliations=[reg["_id"] for reg in self.colav_db["authors"].aggregate(aff_pipeline)]
-
-
         total=cursor.count()
         if not page:
             page=1
@@ -871,7 +881,6 @@ class SearchApp(sdsPluginBase):
                     if author["affiliations"]:
                         reg_aff=self.colav_db["affiliations"].find_one({"_id":author["affiliations"][0]["id"]})
                     
-                    
                     author_entry={
                         "id":reg_au["_id"],
                         "full_name":reg_au["full_name"],
@@ -882,10 +891,6 @@ class SearchApp(sdsPluginBase):
                     if reg_aff:
                         author_entry["affiliation"]["institution"]["name"] = reg_aff["name"]
                         author_entry["affiliation"]["institution"]["id"]   = reg_aff["_id"]
-                    
-
-                        
-                  
 
                     authors.append(author_entry)
 
@@ -897,6 +902,44 @@ class SearchApp(sdsPluginBase):
                     "count":len(paper_list),
                     "page":page,
                     "total_results":total
+                }
+        else:
+            return None
+
+    def search_documents_pbi(self):
+        cursor=self.colav_db['documents'].find()
+        products={}
+        if cursor:
+            for paper in cursor:
+                if "publication_type" in paper.keys():
+                    if paper["publication_type"]["type"]:
+                        if paper["publication_type"]["type"] in products.keys():
+                            if paper["year_published"] in products[paper["publication_type"]["type"]].keys():
+                                products[paper["publication_type"]["type"]][paper["year_published"]]["products"]+=1
+                                products[paper["publication_type"]["type"]][paper["year_published"]]["citations"]+=paper["citations_count"]
+                            else:
+                                products[paper["publication_type"]["type"]][paper["year_published"]]={"products":1,"citations":paper["citations_count"]}
+                        else:
+                            if paper["year_published"]:
+                                products[paper["publication_type"]["type"]]={
+                                        paper["year_published"]:{
+                                            "products":1,"citations":paper["citations_count"]
+                                        }
+                                    }
+            table=[]
+            for typ,years in products.items():
+                for year,counts in years.items():
+                    entry={
+                        "year":year,
+                        "products":counts["products"],
+                        "type":typ,
+                        "citations":counts["citations"]
+                    }
+                    table.append(entry)
+
+            return {
+                "open_access":self.get_venn({}),
+                "products":table
                 }
         else:
             return None
@@ -1046,14 +1089,18 @@ class SearchApp(sdsPluginBase):
             sort=self.request.args.get('sort')
             result=self.search_subjects(keywords=keywords,max_results=max_results,
                 page=page,sort=sort,direction="descending")
+        elif data=="subjects_pbi":
+            result=self.search_subjects_pbi()
+        elif data=="literature_pbi":
+            result=self.search_documents_pbi()
 
         else:
             result=None
         if result:
             response = self.app.response_class(
-            response=self.json.dumps(result),
-            status=200,
-            mimetype='application/json'
+                response=self.json.dumps(result),
+                status=200,
+                mimetype='application/json'
             )
         else:
             response = self.app.response_class(

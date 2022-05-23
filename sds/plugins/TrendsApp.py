@@ -36,7 +36,7 @@ class TrendsApp(sdsPluginBase):
         pdd_reg=self.colav_db["policies"].find_one({"abbreviations":"PDD"})
         pdd_data={
             "id":pdd_reg["_id"],
-            "documents":self.colav_db["documents"].count_documents({"policies.id":pdd_reg["_id"]}),
+            "products":self.colav_db["documents"].count_documents({"policies.id":pdd_reg["_id"]}),
             "authors":self.colav_db["authors"].count_documents({"policies.id":pdd_reg["_id"]}),
             "institutions":self.colav_db["affiliations"].count_documents({"policies.id":pdd_reg["_id"]}),
             "groups":self.colav_db["affiliations"].count_documents({"type":"group","policies.id":pdd_reg["_id"]})
