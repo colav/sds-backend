@@ -68,16 +68,23 @@ class SearchApp(sdsPluginBase):
 
     def search_subjects_pbi(self):
         
-        cursor=self.colav_db["subjects"].find({},{"name":1,"works_count":1,"cited_by_count":1})
+        cursor=self.colav_db["subjects"].find({},{"names":1,"products_count":1,"citations_count":1})
 
         if cursor:
             subjects_list=[]
             for subject in cursor:
+                name=""
+                for n in subject["names"]:
+                    if n["lang"]=="es":
+                        name=n["name"]
+                        break
+                    elif n["lang"]=="en":
+                        name=n["name"]
                 entry={
-                    "name":subject["name"],
+                    "name":name,
                     "id":subject["_id"],
-                    "products_count":subject["works_count"],
-                    "citations_count":subject["cited_by_count"]
+                    "products_count":subject["products_count"],
+                    "citations_count":subject["citations_count"]
                 }
                 subjects_list.append(entry) 
 
@@ -398,8 +405,20 @@ class SearchApp(sdsPluginBase):
         open_access=[]
         entry={}
 
-        initial_year=0
-        final_year = 0
+        initial_year=9999
+        final_year=0
+        if start_year:
+            try:
+                start_year=int(start_year)
+            except:
+                print("Could not convert start year to int")
+                return None
+        if end_year:
+            try:
+                end_year=int(end_year)
+            except:
+                print("Could not convert end year to int")
+                return None
 
         if keywords: 
             cursor=self.colav_db['works'].find({"$text":{"$search":keywords}},{"year_published":1})
@@ -459,48 +478,26 @@ class SearchApp(sdsPluginBase):
                                 if not entry in institution_filters:
                                     institution_filters.append(entry)
 
-        if start_year:
-            try:
-                start_year=int(start_year)
-            except:
-                print("Could not convert start year to int")
-                return None
-        if end_year:
-            try:
-                end_year=int(end_year)
-            except:
-                print("Could not convert end year to int")
-                return None 
-
         venn_query={}
         oa_query={}
+        types_query={}
         if keywords:
             venn_query={"$text":{"$search":keywords}}
             oa_query={"$text":{"$search":keywords}}
-
-            types = self.colav_db['works'].distinct("types",{"$text":{"$search":keywords}})
-            tipos=[]
-            for tipo in types:
-                if tipo["source"]=="minciencias":
-                    if not tipo["type"] in tipos:
-                        tipos.append(tipo["type"])
-        else:
-            types = self.colav_db['works'].distinct("types")
-            tipos=[]
-            for tipo in types:
-                if tipo["source"]=="minciencias":
-                    if not tipo["type"] in tipos:
-                        tipos.append(tipo["type"])
+            types_query={"$text":{"$search":keywords}}
 
         if start_year or end_year:
             venn_query["year_published"]={}
             oa_query["year_published"]={}
+            types_query["year_published"]={}
         if start_year:
             venn_query["year_published"]["$gte"]=start_year
             oa_query["year_published"]["$gte"]=start_year
+            types_query["year_published"]["$gte"]=start_year
         if end_year:
             venn_query["year_published"]["$lte"]=end_year
             oa_query["year_published"]["$lte"]=end_year
+            types_query["year_published"]["$lte"]=end_year
         in_list=[]
         if groups:
             in_list.extend(groups.split())
@@ -512,12 +509,20 @@ class SearchApp(sdsPluginBase):
                 def_list.append(ObjectId(iid))
             venn_query["authors.affiliations.id"]={"$in":def_list}
             oa_query["authors.affiliations.id"]={"$in":def_list}
+            types_query["authors.affiliations.id"]={"$in":def_list}
 
         for oa in ["green","gold","bronze","closed","hybrid"]:
             oa_query["bibliographic_info.open_access_status"]=oa
             val=self.colav_db["works"].count_documents(oa_query)
             if val!=0:
                 open_access.append({"type":oa ,"value":val})
+
+        types = self.colav_db['works'].distinct("types",types_query)
+        tipos=[]
+        for tipo in types:
+            if tipo["source"]=="minciencias":
+                if not tipo["type"] in tipos:
+                    tipos.append(tipo["type"])
 
         return {
             "open_access":open_access,
@@ -559,7 +564,7 @@ class SearchApp(sdsPluginBase):
         if len(aff_list)!=0:
             search_dict["authors.affiliations.id"]={"$in":aff_list}
         if keywords:
-            search_dict["$text":{"$search":keywords}]
+            search_dict["$text"]={"$search":keywords}
 
         cursor=self.colav_db['works'].find(search_dict)
 
@@ -850,7 +855,9 @@ class SearchApp(sdsPluginBase):
             institutions=self.request.args.get('institutions')
             groups=self.request.args.get('groups')
             if tipo == None:
-                result=self.search_documents(keywords=keywords,start_year=start_year,end_year=end_year)
+                result=self.search_documents(keywords=keywords,
+                        start_year=start_year,end_year=end_year,
+                        institutions=institutions,groups=groups)
             else:
                 result=self.search_documents_by_type(keywords=keywords,max_results=max_results,
                     page=page,start_year=start_year,end_year=end_year,sort=sort,
