@@ -2,6 +2,8 @@ from sds.sdsBase import sdsPluginBase, endpoint
 from bson import ObjectId
 from pymongo import ASCENDING,DESCENDING
 from datetime import date
+from datetime import datetime as dt
+from dateutil.relativedelta import relativedelta
 from math import log
 from flask import redirect
 
@@ -35,9 +37,16 @@ class CompendiumApp(sdsPluginBase):
         institutions_filter=[]
         if len(groups_list)!=0:
             for group in groups_list:
-                res=self.colav_db["affiliations"].find_one({"_id":ObjectId(group),"types":"group"})
+                res=self.colav_db["affiliations"].find_one({"_id":ObjectId(group),"types.type":"group"})
                 if res:
-                    groups_filter.append({"name":res["name"],"id":group})
+                    name=""
+                    for n in res["names"]:
+                        if n["lang"]=="es":
+                            name=n["name"]
+                            break
+                        elif n["lang"]=="en":
+                            name=n["name"]
+                    groups_filter.append({"name":name,"id":group})
                     for pby in res["products_by_year"]:
                         if pby["year"]<initial_year:
                             initial_year=pby["year"]
@@ -47,11 +56,20 @@ class CompendiumApp(sdsPluginBase):
             for inst in institutions_list:
                 res=self.colav_db["affiliations"].find_one({"_id":ObjectId(inst)})
                 if res:
-                    institutions_filter.append({"name":res["name"],"id":group})
-                    if initial_year==9999 and final_year==0:
+                    name=""
+                    for n in res["names"]:
+                        if n["lang"]=="es":
+                            name=n["name"]
+                            break
+                        elif n["lang"]=="en":
+                            name=n["name"]
+                    institutions_filter.append({"name":name,"id":inst})
+                    if initial_year==9999:
                         for pby in res["products_by_year"]:
                             if pby["year"]<initial_year:
                                 initial_year=pby["year"]
+                    if final_year==0:
+                        for pby in res["products_by_year"]:
                             if pby["year"]>final_year:
                                 final_year=pby["year"]
 
@@ -71,14 +89,22 @@ class CompendiumApp(sdsPluginBase):
                 search_dict["products_by_year.year"]["$gte"]=start_year
             if end_year:
                 search_dict["products_by_year.year"]["$lte"]=end_year
-            for reg in self.colav_db["affiliations"].find(search_dict,{"name":1,"relations":1,"types":1,"products_by_year":1}):
-                if "group" in reg["types"]:
-                    groups_filter.append({"name":reg["name"],"id":reg["_id"]})
-                    for pby in reg["products_by_year"]:
-                        if pby["year"]<initial_year:
-                            initial_year=pby["year"]
-                        if pby["year"]>final_year:
-                            final_year=pby["year"]
+            for reg in self.colav_db["affiliations"].find(search_dict,{"names":1,"relations":1,"types":1,"products_by_year":1}):
+                for typ in reg["types"]: 
+                    if typ["type"]=="group":
+                        name=reg["names"][0]["name"]
+                        for n in reg["names"]:
+                            if n["lang"]=="es":
+                                name=n["name"]
+                                break
+                            if n["lang"]=="en":
+                                name=n["name"]
+                        groups_filter.append({"name":name,"id":reg["_id"]})
+                        for pby in reg["products_by_year"]:
+                            if pby["year"]<initial_year:
+                                initial_year=pby["year"]
+                            if pby["year"]>final_year:
+                                final_year=pby["year"]
 
         if len(institutions_filter)==0:
             search_dict={}
@@ -99,9 +125,17 @@ class CompendiumApp(sdsPluginBase):
                 search_dict["products_by_year.year"]["$gte"]=start_year
             if end_year:
                 search_dict["products_by_year.year"]["$lte"]=end_year
-            for reg in self.colav_db["affiliations"].find(search_dict,{"name":1,"relations":1,"types":1}):
-                if not "group" in reg["types"]:
-                    institutions_filter.append({"name":reg["name"],"id":reg["_id"]})
+            for reg in self.colav_db["affiliations"].find(search_dict,{"names":1,"relations":1,"types":1}):
+                for typ in reg["types"]: 
+                    if typ["type"]!="group":
+                        name=reg["names"][0]["name"]
+                        for n in reg["names"]:
+                            if n["lang"]=="es":
+                                name=n["name"]
+                                break
+                            if n["lang"]=="en":
+                                name=n["name"]
+                        institutions_filter.append({"name":name,"id":reg["_id"]})
 
         if start_year:
             initial_year=start_year
@@ -109,7 +143,7 @@ class CompendiumApp(sdsPluginBase):
             final_year=end_year
 
         filters={
-            "start_year":initial_year if initial_year!=0 else "",
+            "start_year":initial_year if initial_year!=9999 else "",
             "end_year":final_year if final_year!=0 else "",
             "groups":groups_filter,
             "institutions":institutions_filter
@@ -136,7 +170,7 @@ class CompendiumApp(sdsPluginBase):
                 return None
 
         search_dict={}
-        var_dict={"name":1,"products_count":1,
+        var_dict={"names":1,"products_count":1,
                 "citations_count":1,"products_by_year":1,
                 "affiliations":1,"authors":1,"counts_by_year":1,
                 "works_count":1,
@@ -161,11 +195,18 @@ class CompendiumApp(sdsPluginBase):
         index=max_results*(page-1)
         for subject in cursor:
             index+=1
+            name=subject["names"][0]["name"]
+            for n in subject["names"]:
+                if n["lang"]=="es":
+                    name=n["name"]
+                    break
+                if n["lang"]=="en":
+                    name=n["name"]
             entry={
                 "index":index,
-                "name":subject["name"],
-                "products_count":subject["works_count"],
-                "citations_count":subject["cited_by_count"],
+                "name":name,
+                "products_count":subject["products_count"],
+                "citations_count":subject["citations_count"],
                 "id":subject["_id"],
                 "institutions":[], 
                 "authors":[], 
@@ -174,18 +215,28 @@ class CompendiumApp(sdsPluginBase):
             }
             if "affiliations" in subject.keys():
                 for aff in subject["affiliations"]:
+                    name=aff["names"][0]["name"]
+                    for n in aff["names"]:
+                        if n["lang"]=="es":
+                            name=n["name"]
+                            break
+                        if n["lang"]=="en":
+                            name=n["name"]
                     if "types" in aff.keys():
-                        if aff["types"]=="group":
-                            entry["groups"].append({"name":aff["name"],"id":aff["id"]})
-                        else:
-                            entry["institutions"].append({"name":aff["name"],"id":aff["id"]})
+                        for typ in aff["types"]:
+                            if typ["type"]=="group":
+                                entry["groups"].append({"name":name,"id":aff["id"]})
+                            else:
+                                entry["institutions"].append({"name":name,"id":aff["id"]})
+                    if len(entry["groups"])>=5 and len(entry["institutions"])>=5:
+                        break
             entry["groups"]=entry["groups"][:5]
             entry["institutions"]=entry["institutions"][:5]
                         
             if "authors" in subject.keys():
                 entry["authors"]=[{"name":au["name"],"id":au["id"]} for au in subject["authors"]][:5]
             
-            entry["plot"]=[{"year":sub["year"],"products":sub["works_count"],"citations":sub["cited_by_count"]} for sub in subject["counts_by_year"]]
+            entry["plot"]=[{"year":sub["year"],"products":sub["products_count"],"citations":sub["citations_count"]} for sub in subject["counts_by_year"]]
             entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
             
             data.append(entry)
@@ -212,7 +263,7 @@ class CompendiumApp(sdsPluginBase):
                 print("Could not convert end max to int")
                 return None
 
-        search_dict={"types":"group"}
+        search_dict={"types.type":"group"}
         in_list=[]
         if groups:
             in_list.extend(groups.split())
@@ -224,7 +275,7 @@ class CompendiumApp(sdsPluginBase):
                 def_list.append(ObjectId(iid))
             search_dict["_id"]={"$in":def_list}
         var_dict={
-            "name":1,"relations":1,
+            "names":1,"relations":1,
             "products_count":1,"citations_count":1,
             "products_by_year":1,"subjects":1
         }
@@ -248,10 +299,17 @@ class CompendiumApp(sdsPluginBase):
         index=max_results*(page-1)
         for reg in cursor:
             index+=1
+            name=reg["names"][0]["name"]
+            for n in reg["names"]:
+                if n["lang"]=="es":
+                    name=n["name"]
+                    break
+                if n["lang"]=="en":
+                    name=n["name"]
             entry={
                 "index":index,
                 "id":reg["_id"],
-                "name":reg["name"],
+                "name":name,
                 "products_count":reg["products_count"],
                 "citations_count":reg["citations_count"],
                 "affiliations":{
@@ -261,8 +319,16 @@ class CompendiumApp(sdsPluginBase):
                     }
                 },
                 "plot":[],
-                "subjects":reg["subjects"][:10] if len(reg["subjects"])>=10 else reg["subjects"]
+                "subjects":[]
             }
+
+            for subs in reg["subjects"]:
+                if subs["source"]=="openalex":
+                    entry["subjects"]=subs["subjects"]
+                    break
+            if entry["subjects"]:
+                entry["subjects"]=entry["subjects"][:10] if len(entry["subjects"])>=10 else entry["subjects"]
+
             year_index={}
 
             for i,prod in enumerate(reg["products_by_year"]):
@@ -283,16 +349,109 @@ class CompendiumApp(sdsPluginBase):
                             "citations":cit["value"]
                         })
             entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
-            if "subjects" in reg.keys():
-                entry["subjects"]=reg["subjects"][:10] if len(reg["subjects"])>=10 else reg["subjects"]
+                
             data.append(entry)
 
         return {"data":data,"page":page,"count":max_results,"total":total}
 
 
     def get_authors(self):
+        data={
+            "sex":[
+                {"type":"Femenino","value":self.colav_db["person"].count_documents({"sex":"f"})},
+                {"type":"Masculino","value":self.colav_db["person"].count_documents({"sex":"m"})}
+            ],#pie
+            "age":[],#pie
+            "scholarity":[],#bars
+            "rank":[]#pie
+        }
 
-        return {"data":""}
+        adolescent_search={
+            "birthdate":{"$lte":int((dt.now()-relativedelta(years=12)).timestamp())},
+            "birthdate":{"$gte":int((dt.now()-relativedelta(years=18)).timestamp())}
+            }
+        young_search={
+            "birthdate":{"$lte":int((dt.now()-relativedelta(years=19)).timestamp())},
+            "birthdate":{"$gte":int((dt.now()-relativedelta(years=26)).timestamp())}
+            }
+        adult_search={
+            "birthdate":{"$lte":int((dt.now()-relativedelta(years=27)).timestamp())},
+            "birthdate":{"$gte":int((dt.now()-relativedelta(years=59)).timestamp())}
+            }
+        old_search={
+            "birthdate":{"$lte":int((dt.now()-relativedelta(years=60)).timestamp())},
+            }
+        data["age"]=[
+            {"type":"Adolescencia","value":self.colav_db["person"].count_documents(adolescent_search)},
+            {"type":"Juventud","value":self.colav_db["person"].count_documents(young_search)},
+            {"type":"Adultez","value":self.colav_db["person"].count_documents(adult_search)},
+            {"type":"Persona mayor","value":self.colav_db["person"].count_documents(old_search)}
+        ]
+
+        pregrado=0
+        esp=0
+        esp_medica=0
+        maestria=0
+        doctorado=0
+        posdoctorado=0
+
+        junior=0
+        asociado=0
+        senior=0
+        emerito=0
+
+        for author in self.colav_db["person"].find():
+            max_time=0
+            max_degree=""
+            for deg in author["degrees"]:
+                if deg["date"]>max_time:
+                    max_time=deg["date"]
+                    max_degree=deg["degree"]
+
+            if max_degree=='Pregrado/Universitario':
+                pregrado+=1
+            elif max_degree=='Especialización':
+                esp+=1
+            elif max_degree=='Especialidad Médica':
+                esp_medica+=1
+            elif max_degree=='Maestría/Magister':
+                maestria+=1
+            elif max_degree=='Doctorado':
+                doctorado+=1
+            elif max_degree=='Postdoctorado' or max_degree=='Postdoctorado/Estancia postdoctoral':
+                posdoctorado+=1
+            max_time=0
+            max_rank=""
+            for rank in author["ranking"]:
+                if rank["date"]>max_time:
+                    max_time=rank["date"]
+                    max_rank=rank["rank"]
+            if max_rank=='Investigador Junior':
+                junior+=1
+            elif max_rank=='Investigador Asociado':
+                asociado+=1
+            elif max_rank=='Investigador Sénior':
+                senior+=1
+            elif max_rank=='Investigador Emérito':
+                emerito+=1
+
+        data["scholarity"]=[
+            {"type":"Pregrado","value":pregrado},
+            {"type":"Especialización","value":esp},
+            {"type":"Especialidad médica","value":esp_medica},
+            {"type":"Maestría","value":maestria},
+            {"type":"Doctorado","value":doctorado},
+            {"type":"Postdoctorado","value":posdoctorado}
+        ]
+
+        data["rank"]=[
+            {"type":"Junior","value":junior},
+            {"type":"Asociado","value":asociado},
+            {"type":"Sénior","value":senior},
+            {"type":"Emérito","value":emerito}
+        ]
+
+        return {"data":data}
 
 
     def get_institutions(self,page=1,max_results=10,groups="",institutions="",sort="citations",direction="descending"):
@@ -314,7 +473,7 @@ class CompendiumApp(sdsPluginBase):
                 print("Could not convert end max to int")
                 return None
 
-        search_dict={}
+        search_dict={"types.type":{"$ne":"group"}}
         in_list=[]
         if groups:
             in_list.extend(groups.split())
@@ -325,7 +484,7 @@ class CompendiumApp(sdsPluginBase):
             for iid in in_list:
                 def_list.append(ObjectId(iid))
             search_dict["_id"]={"$in":def_list}
-        var_dict={"name":1,"products_count":1,"citations_count":1,"products_by_year":1,"subjects":1}
+        var_dict={"names":1,"products_count":1,"citations_count":1,"products_by_year":1,"subjects":1}
         total=self.colav_db["affiliations"].count_documents(search_dict)
         cursor=self.colav_db["affiliations"].find(search_dict,)
         
@@ -346,15 +505,28 @@ class CompendiumApp(sdsPluginBase):
         index=max_results*(page-1)
         for reg in cursor:
             index+=1
+            name=reg["names"][0]["name"]
+            for n in reg["names"]:
+                if n["lang"]=="es":
+                    name=n["name"]
+                    break
+                if n["lang"]=="en":
+                    name=n["name"]
             entry={
                 "index":index,
                 "id":reg["_id"],
-                "name":reg["name"],
+                "name":name,
                 "products_count":reg["products_count"],
                 "citations_count":reg["citations_count"],
                 "plot":[],
                 "subjects":[]
             }
+            for subs in reg["subjects"]:
+                if subs["source"]=="openalex":
+                    entry["subjects"]=subs["subjects"]
+                    break
+            if entry["subjects"]:
+                entry["subjects"]=entry["subjects"][:10] if len(entry["subjects"])>=10 else entry["subjects"]
             year_index={}
             for i,prod in enumerate(reg["products_by_year"]):
                 entry["plot"].append({
@@ -374,8 +546,7 @@ class CompendiumApp(sdsPluginBase):
                             "citations":cit["value"]
                         })
             entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
-            if "subjects" in reg.keys():
-                entry["subjects"]=reg["subjects"][:10] if len(reg["subjects"])>=10 else reg["subjects"]
+            
             data.append(entry)
 
         return {"data":data,"page":page,"count":max_results,"total":total}
@@ -385,7 +556,6 @@ class CompendiumApp(sdsPluginBase):
     def app_compendium(self):
         """
         """
-        
         data = self.request.args.get('data')
         
         if data=="info":
@@ -448,6 +618,20 @@ class CompendiumApp(sdsPluginBase):
             if subjects:    
                 response = self.app.response_class(
                 response=self.json.dumps(subjects),
+                status=200,
+                mimetype='application/json'
+                )
+            else:
+                response = self.app.response_class(
+                response=self.json.dumps({"status":"Request returned empty"}),
+                status=204,
+                mimetype='application/json'
+            )
+        elif data=="authors":
+            authors=self.get_authors()
+            if authors:    
+                response = self.app.response_class(
+                response=self.json.dumps(authors),
                 status=200,
                 mimetype='application/json'
                 )
