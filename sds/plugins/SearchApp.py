@@ -394,7 +394,7 @@ class SearchApp(sdsPluginBase):
         else:
             return None
 
-    def search_documents(self,keywords="",start_year=None,end_year=None):
+    def search_documents(self,keywords="",start_year=None,end_year=None,institutions=None,groups=None):
         open_access=[]
         entry={}
 
@@ -438,18 +438,26 @@ class SearchApp(sdsPluginBase):
         institution_filters = []
         group_filters=[]
 
-        if keywords:
-            aff_pipeline =[
-                {"$match":{"$text":{"$search":keywords}}},
-                {"$project":{"authors.affiliations":1}},
-                {"$unwind":"$authors"},
-                {"$group":{"_id":{"$arrayElemAt":["$authors.affiliations.id",0]},"name":{"$first":"$authors.affiliations.name"}}},
-                {"$unwind":"$name"}
-            ]
-            cursor = self.colav_db["works"].aggregate(aff_pipeline,allowDiskUse=True)
-            for institution in cursor:
-                entry = {"id":institution["_id"],"name":institution["name"]}
-                institution_filters.append(entry)
+        cursor = self.colav_db["works"].find()
+        for reg in cursor:
+            for author in reg["authors"]:
+                for aff in author["affiliations"]:
+                    if "types" in aff.keys():
+                        for typ in aff["types"]:
+                            if typ["type"]=="group":
+                                entry={
+                                    "name":aff["name"],
+                                    "id":aff["id"]
+                                }
+                                if not entry in group_filters:
+                                    group_filters.append(entry)
+                            else:    
+                                entry={
+                                    "name":aff["name"],
+                                    "id":aff["id"]
+                                    }
+                                if not entry in institution_filters:
+                                    institution_filters.append(entry)
 
         if start_year:
             try:
@@ -464,180 +472,59 @@ class SearchApp(sdsPluginBase):
                 print("Could not convert end year to int")
                 return None 
 
-        if keywords:        
-
-            if start_year and not end_year:
-                venn_query={"year_published":{"$gte":start_year},"$text":{"$search":keywords}}
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"green","year_published":{"$gte":start_year},"$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"gold","year_published":{"$gte":start_year},"$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"gold" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"bronze","year_published":{"$gte":start_year},"$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"bronze" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"closed","year_published":{"$gte":start_year},"$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"closed" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"hybrid","year_published":{"$gte":start_year},"$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"hybrid" ,"value":val})
-                
-            elif end_year and not start_year:
-                venn_query={"year_published":{"$lte":end_year},"$text":{"$search":keywords}}
-                
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"green","year_published":{"$lte":end_year},"$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val={"type":"gold"  ,"value": self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"gold","year_published":{"$lte":end_year},"$text":{"$search":keywords}})  },
-                if val!=0:
-                    open_access.append({"type":"gold" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"bronze","year_published":{"$lte":end_year},"$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"bronze" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"closed","year_published":{"$lte":end_year},"$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"closed" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"hybrid","year_published":{"$lte":end_year},"$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"hybrid" ,"value":val})
-                
-            elif start_year and end_year:
-                venn_query={"year_published":{"$gte":start_year,"$lte":end_year},"$text":{"$search":keywords}}
-                
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"green","year_published":{"$gte":start_year,"$lte":end_year},"$text":{"$search":keywords} })
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"gold","year_published":{"$gte":start_year,"$lte":end_year},"$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"gold" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"bronze","year_published":{"$gte":start_year,"$lte":end_year},"$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"bronze" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"closed","year_published":{"$gte":start_year,"$lte":end_year},"$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"closed" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"hybrid","year_published":{"$gte":start_year,"$lte":end_year},"$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"hybrid" ,"value":val})
-                
-            else:
-                venn_query={"$text":{"$search":keywords}}
-    
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"green","$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"gold","$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"gold" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"bronze","$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"bronze" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"closed","$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"closed" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"hybrid","$text":{"$search":keywords}})
-                if val!=0:
-                    open_access.append({"type":"hybrid" ,"value":val})
-                
-
+        venn_query={}
+        oa_query={}
+        if keywords:
+            venn_query={"$text":{"$search":keywords}}
+            oa_query={"$text":{"$search":keywords}}
 
             types = self.colav_db['works'].distinct("types",{"$text":{"$search":keywords}})
             tipos=[]
             for tipo in types:
                 if tipo["source"]=="minciencias":
-                    tipos.append(tipo["type"])
-
+                    if not tipo["type"] in tipos:
+                        tipos.append(tipo["type"])
         else:
-            if start_year and not end_year:
-                venn_query={"year_published":{"$gte":start_year}}
-                
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"green","year_published":{"$gte":start_year} })
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"gold","year_published":{"$gte":start_year} })
-                if val!=0:
-                    open_access.append({"type":"gold" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"bronze","year_published":{"$gte":start_year} })
-                if val!=0:
-                    open_access.append({"type":"bronze" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"closed","year_published":{"$gte":start_year} })
-                if val!=0:
-                    open_access.append({"type":"closed" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"hybrid","year_published":{"$gte":start_year} })
-                if val!=0:
-                    open_access.append({"type":"hybrid" ,"value":val})
-            
-            elif end_year and not start_year:
-                venn_query={"year_published":{"$lte":end_year} }
-                
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"green","year_published":{"$lte":end_year} })
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"gold","year_published":{"$lte":end_year} })
-                if val!=0:
-                    open_access.append({"type":"gold" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"bronze","year_published":{"$lte":end_year} })
-                if val!=0:
-                    open_access.append({"type":"bronze" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"closed","year_published":{"$lte":end_year} })
-                if val!=0:
-                    open_access.append({"type":"closed" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"hybrid","year_published":{"$lte":end_year} })
-                if val!=0:
-                    open_access.append({"type":"hybrid" ,"value":val})
-                
-            elif start_year and end_year:
-                venn_query={"year_published":{"$gte":start_year,"$lte":end_year} }
-                
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"green","year_published":{"$gte":start_year,"$lte":end_year} })
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"gold","year_published":{"$gte":start_year,"$lte":end_year} })
-                if val!=0:
-                    open_access.append({"type":"gold" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"bronze","year_published":{"$gte":start_year,"$lte":end_year} })
-                if val!=0:
-                    open_access.append({"type":"bronze" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"closed","year_published":{"$gte":start_year,"$lte":end_year} })
-                if val!=0:
-                    open_access.append({"type":"closed" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"hybrid","year_published":{"$gte":start_year,"$lte":end_year} })
-                if val!=0:
-                    open_access.append({"type":"hybrid" ,"value":val})
-            
-            else:
-                venn_query={}
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"green" })
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"gold" })
-                if val!=0:
-                    open_access.append({"type":"gold" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"bronze" })
-                if val!=0:
-                    open_access.append({"type":"bronze" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"closed" })
-                if val!=0:
-                    open_access.append({"type":"closed" ,"value":val})
-                val=self.colav_db['works'].count_documents({"bibliographic_info.open_access_status":"hybrid" })
-                if val!=0:
-                    open_access.append({"type":"hybrid" ,"value":val})
-                
-
-
             types = self.colav_db['works'].distinct("types")
             tipos=[]
             for tipo in types:
                 if tipo["source"]=="minciencias":
-                    tipos.append(tipo["type"])
+                    if not tipo["type"] in tipos:
+                        tipos.append(tipo["type"])
+
+        if start_year or end_year:
+            venn_query["year_published"]={}
+            oa_query["year_published"]={}
+        if start_year:
+            search_dict["year_published"]["$gte"]=start_year
+            venn_query["year_published"]["$gte"]=start_year
+            oa_query["year_published"]["$gte"]=start_year
+        if end_year:
+            venn_query["year_published"]["$lte"]=end_year
+            oa_query["year_published"]["$lte"]=end_year
+        in_list=[]
+        if groups:
+            in_list.extend(groups.split())
+        if institutions:
+            in_list.extend(institutions.split())
+        if len(in_list)>0:
+            def_list=[]
+            for iid in in_list:
+                def_list.append(ObjectId(iid))
+            venn_query["authors.affiliations.id"]={"$in":def_list}
+            oa_query["authors.affiliations.id"]={"$in":def_list}
+
+        for oa in ["green","gold","bronze","closed","hybrid"]:
+            oa_query["bibliographic_info.open_access_status"]=oa
+            val=self.colav_db["works"].count_documents(oa_query)
+            if val!=0:
+                open_access.append({"type":oa ,"value":val})
 
         return {
             "open_access":open_access,
             "venn_source":self.get_venn(venn_query),
             "types":tipos,
-            "filters":{"years":years,"institutions":institution_filters}
+            "filters":{"years":years,"institutions":institution_filters,"groups":group_filters}
         }
                     
     def search_documents_by_type(self,keywords="",max_results=100,page=1,start_year=None,end_year=None,
@@ -727,7 +614,6 @@ class SearchApp(sdsPluginBase):
                 
                 authors=[]
                 for author in paper["authors"]:
-                    
                     author_entry={
                         "id":author["id"],
                         "full_name":author["full_name"],
@@ -959,7 +845,6 @@ class SearchApp(sdsPluginBase):
             max_results=self.request.args.get('max') if 'max' in self.request.args else 100
             page=self.request.args.get('page') if 'page' in self.request.args else 1
             keywords = self.request.args.get('keywords') if "keywords" in self.request.args else ""
-            country = self.request.args.get('country') if "country" in self.request.args else ""
             start_year=self.request.args.get('start_year')
             end_year=self.request.args.get('end_year')
             sort=self.request.args.get('sort')

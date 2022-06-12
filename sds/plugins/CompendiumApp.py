@@ -172,9 +172,8 @@ class CompendiumApp(sdsPluginBase):
         search_dict={}
         var_dict={"names":1,"products_count":1,
                 "citations_count":1,"products_by_year":1,
-                "affiliations":1,"authors":1,"counts_by_year":1,
-                "works_count":1,
-                "cited_by_count":1}
+                "affiliations":1,"authors":1,"counts_by_year":1
+                }
         total=self.colav_db["subjects"].count_documents(search_dict)
         cursor=self.colav_db["subjects"].find(search_dict,var_dict)
         
@@ -236,7 +235,7 @@ class CompendiumApp(sdsPluginBase):
             if "authors" in subject.keys():
                 entry["authors"]=[{"name":au["name"],"id":au["id"]} for au in subject["authors"]][:5]
             
-            entry["plot"]=[{"year":sub["year"],"products":sub["products_count"],"citations":sub["citations_count"]} for sub in subject["counts_by_year"]]
+            entry["plot"]=[{"year":sub["year"],"products":sub["products_count"],"citations":sub["citations_count"]} for sub in subject["counts_by_year"] if sub["year"]<start_year or sub["year"]>end_year]
             entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
             
             data.append(entry)
@@ -244,7 +243,7 @@ class CompendiumApp(sdsPluginBase):
         return {"data":data,"page":page,"count":max_results,"total":total}
 
 
-    def get_groups(self,page=1,max_results=10,groups="",institutions="",sort="citations",direction="descending"):
+    def get_groups(self,page=1,max_results=10,groups="",institutions="",start_year=None,end_year=None,sort="citations",direction="descending"):
         filters={}
         if not page:
             page=1
@@ -263,7 +262,21 @@ class CompendiumApp(sdsPluginBase):
                 print("Could not convert end max to int")
                 return None
 
+        if start_year:
+            try:
+                start_year=int(start_year)
+            except:
+                print("Could not convert start year to int")
+                return None
+        if end_year:
+            try:
+                end_year=int(end_year)
+            except:
+                print("Could not convert end year to int")
+                return None
+
         search_dict={"types.type":"group"}
+
         in_list=[]
         if groups:
             in_list.extend(groups.split())
@@ -332,6 +345,8 @@ class CompendiumApp(sdsPluginBase):
             year_index={}
 
             for i,prod in enumerate(reg["products_by_year"]):
+                if prod["year"]<start_year or prod["year"]>end_year:
+                    continue
                 entry["plot"].append({
                     "year":prod["year"],
                     "products":prod["value"],
@@ -340,6 +355,8 @@ class CompendiumApp(sdsPluginBase):
                 year_index[prod["year"]]=i
             if "citations_by_year" in reg.keys():
                 for cit in reg["citations_by_year"]:
+                    if cit["year"]<start_year or cit["year"]>end_year:
+                        continue
                     if cit["year"] in year_index.keys():
                         entry["plot"][i]["citations"]=cit["value"]
                     else:
@@ -472,8 +489,27 @@ class CompendiumApp(sdsPluginBase):
             except:
                 print("Could not convert end max to int")
                 return None
+        
+        if start_year:
+            try:
+                start_year=int(start_year)
+            except:
+                print("Could not convert start year to int")
+                return None
+        if end_year:
+            try:
+                end_year=int(end_year)
+            except:
+                print("Could not convert end year to int")
+                return None
 
         search_dict={"types.type":{"$ne":"group"}}
+        if start_year or end_year:
+            search_dict["products_by_year.year"]={}
+        if start_year:
+            search_dict["products_by_year.year"]["$gte"]=start_year
+        if end_year:
+            search_dict["products_by_year.year"]["$lte"]=end_year
         in_list=[]
         if groups:
             in_list.extend(groups.split())
@@ -529,6 +565,8 @@ class CompendiumApp(sdsPluginBase):
                 entry["subjects"]=entry["subjects"][:10] if len(entry["subjects"])>=10 else entry["subjects"]
             year_index={}
             for i,prod in enumerate(reg["products_by_year"]):
+                if prod["year"]<start_year or prod["year"]>end_year:
+                    continue
                 entry["plot"].append({
                     "year":prod["year"],
                     "products":prod["value"],
@@ -537,6 +575,8 @@ class CompendiumApp(sdsPluginBase):
                 year_index[prod["year"]]=i
             if "citations_by_year" in reg.keys():
                 for cit in reg["citations_by_year"]:
+                    if cit["year"]<start_year or cit["year"]>end_year:
+                        continue
                     if cit["year"] in year_index.keys():
                         entry["plot"][i]["citations"]=cit["value"]
                     else:
@@ -580,7 +620,9 @@ class CompendiumApp(sdsPluginBase):
             max_results=self.request.args.get('max')
             page=self.request.args.get('page')
             sort=self.request.args.get('sort')
-            groups=self.get_groups(page=page,max_results=max_results,sort=sort)
+            start_year=self.request.args.get('start_year')
+            end_year=self.request.args.get('end_year')
+            groups=self.get_groups(start_year=start_year,end_year=end_year,page=page,max_results=max_results,sort=sort)
             if groups:    
                 response = self.app.response_class(
                 response=self.json.dumps(groups),
