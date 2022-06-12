@@ -496,7 +496,6 @@ class SearchApp(sdsPluginBase):
             venn_query["year_published"]={}
             oa_query["year_published"]={}
         if start_year:
-            search_dict["year_published"]["$gte"]=start_year
             venn_query["year_published"]["$gte"]=start_year
             oa_query["year_published"]["$gte"]=start_year
         if end_year:

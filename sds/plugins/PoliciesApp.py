@@ -35,7 +35,7 @@ class PoliciesApp(sdsPluginBase):
                     break
                 if n["lang"]=="en":
                     name=n["name"]
-            description=policy["descriptions"][0]["description"]
+            description=policy["descriptions"][0]["description"] if len(policy["descriptions"])>0 else ""
             for n in policy["descriptions"]:
                 if n["lang"]=="es":
                     description=n["description"]
