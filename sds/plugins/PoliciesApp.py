@@ -788,7 +788,6 @@ class PoliciesApp(sdsPluginBase):
                         if cit["year"]>end_year:
                             continue
                     if cit["year"] in year_index.keys():
-                        print(cit["year"])
                         i=year_index[cit["year"]]
                         entry["plot"][i]["citations"]=cit["value"]
                     else:
@@ -1027,7 +1026,7 @@ class PoliciesApp(sdsPluginBase):
  
             authors=self.get_authors(idx=idx,institutions=institutions,groups=groups,
                     start_year=start_year,end_year=end_year,
-                    page=page,max_results=max_results)
+                    page=page,max_results=max_results,sort=sort)
             if authors:
                 response = self.app.response_class(
                 response=self.json.dumps(authors),
@@ -1047,10 +1046,10 @@ class PoliciesApp(sdsPluginBase):
             start_year=self.request.args.get('start_year')
             end_year=self.request.args.get('end_year')
             institutions=self.request.args.get('institutions')
-
+            sort=self.request.args.get('sort')
             groups=self.get_groups(idx=idx,institutions=institutions,
                     start_year=start_year,end_year=end_year,
-                    page=page,max_results=max_results)
+                    page=page,max_results=max_results,sort=sort)
             if groups:
                 response = self.app.response_class(
                 response=self.json.dumps(groups),
@@ -1069,10 +1068,10 @@ class PoliciesApp(sdsPluginBase):
             page=self.request.args.get('page')
             start_year=self.request.args.get('start_year')
             end_year=self.request.args.get('end_year')
-
+            sort=self.request.args.get('sort')
             inst=self.get_institutions(idx=idx,
                     start_year=start_year,end_year=end_year,
-                    page=page,max_results=max_results)
+                    page=page,max_results=max_results,sort=sort)
             if inst:
                 response = self.app.response_class(
                 response=self.json.dumps(inst),
