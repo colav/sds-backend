@@ -31,37 +31,39 @@ class SubjectsApp(sdsPluginBase):
             result=self.colav_db["subjects"].find_one({"_id":ObjectId(idx)})
         else:
             return None
+        name=result["names"][0]["name"]
+        for n in result["names"]:
+            if n["lang"]=="es":
+                name=n["name"]
+                break
+            if n["lang"]=="en":
+                name=n["name"]
         tree={
-            "title":result["name"],
+            "title":name,
             "level":result["level"],
             "key":"0",
             "children":[]
         }
         count=0
-        if result["related_concepts"]:
-            for sub in result["related_concepts"]:
-                if sub["level"]-1!=result["level"]:
-                    continue
-                entry={
-                    "title":sub["display_name"],
-                    "id":sub["id"] if "id" in sub.keys() else "",
-                    "level":sub["level"],
-                    "key":"0-"+str(count)
-                }
-                tree["children"].append(entry)
-                count+=1
         parent={}
-        if result["ancestors"]:
-            for ancestor in result["ancestors"]:
-                if ancestor["level"]!=result["level"]-1:
-                    continue
+        if result["relations"]:
+            for sub in result["relations"]:
+                if sub["level"]<result["level"]:
+                    if sub["level"]==result["level"]-1:
+                        parent={
+                            "title":sub["name"],
+                            "id":sub["id"] if "id" in sub.keys() else "",
+                            "level":sub["level"]
+                        }
                 else:
-                    parent={
-                        "title":ancestor["display_name"],
-                        "id":ancestor["id"] if "id" in ancestor.keys() else "",
-                        "level":ancestor["level"]
+                    entry={
+                        "title":sub["name"],
+                        "id":sub["id"] if "id" in sub.keys() else "",
+                        "level":sub["level"],
+                        "key":"0-"+str(count)
                     }
-                    break
+                    tree["children"].append(entry)
+                    count+=1
 
         institutions_list=institutions.split() if institutions else []
         groups_list=groups.split() if groups else []
@@ -107,7 +109,7 @@ class SubjectsApp(sdsPluginBase):
                                 final_year=pby["year"]
 
         if len(groups_filter)==0:
-            search_dict={"policies.id":ObjectId(idx)}
+            search_dict={}
             in_list=[]
             if institutions :
                 in_list.extend(institutions_list)
@@ -140,7 +142,7 @@ class SubjectsApp(sdsPluginBase):
                                 final_year=pby["year"]
 
         if len(institutions_filter)==0:
-            search_dict={"policies.id":ObjectId(idx)}
+            search_dict={}
             in_list=[]
             if groups:
                 in_list.extend(groups_list)
@@ -183,7 +185,7 @@ class SubjectsApp(sdsPluginBase):
             "institutions":institutions_filter
         }
 
-        return {"data":{"tree":tree,"parent":parent,"citations":result["cited_by_count"],"products":result["works_count"]},"filters":filters}
+        return {"data":{"tree":tree,"parent":parent,"citations":result["citations_count"],"products":result["products_count"]},"filters":filters}
 
     def get_venn(self,venn_query):
         venn_source={
