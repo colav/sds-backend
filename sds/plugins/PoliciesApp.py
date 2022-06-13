@@ -339,7 +339,7 @@ class PoliciesApp(sdsPluginBase):
             }
     
     def get_production_by_type(self,idx=None,max_results=100,page=1,
-            groups=None,institutions=None,start_year=None,end_year=None,sort="descending",direction=None,tipo=None):
+            groups=None,institutions=None,start_year=None,end_year=None,sort="year",direction="descending",tipo=None):
         total = 0
 
         if start_year:
@@ -802,7 +802,7 @@ class PoliciesApp(sdsPluginBase):
 
         return {"total":total_results,"page":page,"count":len(data),"data":data}
 
-    def get_authors(self,idx=None,institutions=None,groups=None,start_year=None,end_year=None,page=1,max_results=100):
+    def get_authors(self,idx=None,institutions=None,groups=None,start_year=None,end_year=None,page=1,max_results=100,sort="citations"):
         if start_year:
             try:
                 start_year=int(start_year)
@@ -842,6 +842,9 @@ class PoliciesApp(sdsPluginBase):
             aff_list.extend([ObjectId(grp) for grp in groups.split()])
 
         if idx:
+            sorting_var="citations_count"
+            if sort=="production":
+                sorting_var="products_count"
             pipeline=[
                 {"$match":{"policies.id":ObjectId(idx)}}
             ]
@@ -856,7 +859,7 @@ class PoliciesApp(sdsPluginBase):
             pipeline.extend([
                 {"$project":{"authors":1,"citations_count":1,"subjects":1}},
                 {"$group":{"_id":"$authors.id","products_count":{"$sum":1},"citations_count":{"$sum":"$citations_count"},"author":{"$first":"$authors"},"subjects":{"$last":"$subjects"}}},
-                {"$sort":{"citations_count":-1}},
+                {"$sort":{sorting_var:-1}},
                 {"$project":{"author.id":1,"author.full_name":1,"author.affiliations":1,
                     "products_count":1,"citations_count":1,"subjects":1}}
             ])
