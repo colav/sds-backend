@@ -10,34 +10,22 @@ class SubjectsApp(sdsPluginBase):
     def __init__(self, sds):
         super().__init__(sds)
 
-    def get_info(self,idx=None):
-        initial_year=0
-        final_year=0
-        groups=[]
-        institutions=[]
+    def get_info(self,idx,institutions=[],groups=[],start_year=None,end_year=None):
+        initial_year=9999
+        final_year = 0
 
-        if idx:
-            result=self.colav_db['documents'].find({"subjects.id":ObjectId(idx)},
-                {"year_published":1}).sort([("year_published",ASCENDING)]).limit(1)
-            if result:
-                result=list(result)
-                if len(result)>0:
-                    initial_year=result[0]["year_published"]
-            result=self.colav_db['documents'].find({"subjects.id":ObjectId(idx)},
-                {"year_published":1}).sort([("year_published",DESCENDING)]).limit(1)
-            if result:
-                result=list(result)
-                if len(result)>0:
-                    final_year=result[0]["year_published"]
-            groups=list(self.colav_db["affiliations"].find({"type":"group","subjects.id":ObjectId(idx)},{"name":1}))
-            institutions=list(self.colav_db["affiliations"].find({"subjects.id":ObjectId(idx)},{"name":1}))
-
-        filters={
-            "start_year":initial_year if initial_year!=0 else "",
-            "end_year":final_year if final_year!=0 else "",
-            "groups":groups,
-            "institutions":institutions
-        }
+        if start_year:
+            try:
+                start_year=int(start_year)
+            except:
+                print("Could not convert start year to int")
+                return None
+        if end_year:
+            try:
+                end_year=int(end_year)
+            except:
+                print("Could not convert end year to int")
+                return None
 
         if idx:
             result=self.colav_db["subjects"].find_one({"_id":ObjectId(idx)})
@@ -74,6 +62,126 @@ class SubjectsApp(sdsPluginBase):
                         "level":ancestor["level"]
                     }
                     break
+
+        institutions_list=institutions.split() if institutions else []
+        groups_list=groups.split() if groups else []
+
+        groups_filter=[]
+        institutions_filter=[]
+        if len(groups_list)!=0:
+            for group in groups_list:
+                res=self.colav_db["affiliations"].find_one({"_id":ObjectId(group),"types.type":"group"})
+                if res:
+                    name=""
+                    for n in res["names"]:
+                        if n["lang"]=="es":
+                            name=n["name"]
+                            break
+                        elif n["lang"]=="en":
+                            name=n["name"]
+                    groups_filter.append({"name":name,"id":group})
+                    for pby in res["products_by_year"]:
+                        if pby["year"]<initial_year:
+                            initial_year=pby["year"]
+                        if pby["year"]>final_year:
+                            final_year=pby["year"]
+        if len(institutions_list)!=0:
+            for inst in institutions_list:
+                res=self.colav_db["affiliations"].find_one({"_id":ObjectId(inst)})
+                if res:
+                    name=""
+                    for n in res["names"]:
+                        if n["lang"]=="es":
+                            name=n["name"]
+                            break
+                        elif n["lang"]=="en":
+                            name=n["name"]
+                    institutions_filter.append({"name":name,"id":inst})
+                    if initial_year==9999:
+                        for pby in res["products_by_year"]:
+                            if pby["year"]<initial_year:
+                                initial_year=pby["year"]
+                    if final_year==0:
+                        for pby in res["products_by_year"]:
+                            if pby["year"]>final_year:
+                                final_year=pby["year"]
+
+        if len(groups_filter)==0:
+            search_dict={"policies.id":ObjectId(idx)}
+            in_list=[]
+            if institutions :
+                in_list.extend(institutions_list)
+            if len(in_list)>0:
+                def_list=[]
+                for iid in in_list:
+                    def_list.append(ObjectId(iid))
+                search_dict["relations.id"]={"$in":def_list}
+            if start_year or end_year:
+                search_dict["products_by_year.year"]={}
+            if start_year:
+                search_dict["products_by_year.year"]["$gte"]=start_year
+            if end_year:
+                search_dict["products_by_year.year"]["$lte"]=end_year
+            for reg in self.colav_db["affiliations"].find(search_dict,{"names":1,"relations":1,"types":1,"products_by_year":1}):
+                for typ in reg["types"]: 
+                    if typ["type"]=="group":
+                        name=reg["names"][0]["name"]
+                        for n in reg["names"]:
+                            if n["lang"]=="es":
+                                name=n["name"]
+                                break
+                            if n["lang"]=="en":
+                                name=n["name"]
+                        groups_filter.append({"name":name,"id":reg["_id"]})
+                        for pby in reg["products_by_year"]:
+                            if pby["year"]<initial_year:
+                                initial_year=pby["year"]
+                            if pby["year"]>final_year:
+                                final_year=pby["year"]
+
+        if len(institutions_filter)==0:
+            search_dict={"policies.id":ObjectId(idx)}
+            in_list=[]
+            if groups:
+                in_list.extend(groups_list)
+            elif len(groups_list)>0:
+                for gr in groups_list:
+                    in_list.append(str(gr["id"]))
+            if len(in_list)>0:
+                def_list=[]
+                for iid in in_list:
+                    def_list.append(ObjectId(iid))
+                search_dict["relations.id"]={"$in":def_list}
+            if start_year or end_year:
+                search_dict["products_by_year.year"]={}
+            if start_year:
+                search_dict["products_by_year.year"]["$gte"]=start_year
+            if end_year:
+                search_dict["products_by_year.year"]["$lte"]=end_year
+            for reg in self.colav_db["affiliations"].find(search_dict,{"names":1,"relations":1,"types":1}):
+                for typ in reg["types"]: 
+                    if typ["type"]!="group":
+                        name=reg["names"][0]["name"]
+                        for n in reg["names"]:
+                            if n["lang"]=="es":
+                                name=n["name"]
+                                break
+                            if n["lang"]=="en":
+                                name=n["name"]
+                        institutions_filter.append({"name":name,"id":reg["_id"]})
+
+        if start_year:
+            initial_year=start_year
+        if end_year:
+            final_year=end_year
+
+        filters={
+            "years":{
+            "start_year":initial_year if initial_year!=9999 else "",
+            "end_year":final_year if final_year!=0 else ""},
+            "groups":groups_filter,
+            "institutions":institutions_filter
+        }
 
         return {"data":{"tree":tree,"parent":parent,"citations":result["cited_by_count"],"products":result["works_count"]},"filters":filters}
 
@@ -430,7 +538,7 @@ class SubjectsApp(sdsPluginBase):
         return {"total":total,"page":page,"count":len(entry),"data":entry}
 
     def get_institutions(self,idx=None,institutions="",page=1,max_results=100,sort="citations",direction="descending"):
-        search_dict={"types":{"$ne":"group"},"subjects.id":ObjectId(idx)}
+        search_dict={"types.type":{"$ne":"group"},"subjects.id":ObjectId(idx)}
         if institutions:
             institutions_list=[ObjectId(inst) for inst in institutions.split()]
             search_dict["_id"]={"$in":institutions_list}

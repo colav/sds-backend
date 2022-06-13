@@ -100,7 +100,7 @@ class PoliciesApp(sdsPluginBase):
                                 final_year=pby["year"]
 
         if len(groups_filter)==0:
-            search_dict={}
+            search_dict={"policies.id":ObjectId(idx)}
             in_list=[]
             if institutions :
                 in_list.extend(institutions_list)
@@ -133,7 +133,7 @@ class PoliciesApp(sdsPluginBase):
                                 final_year=pby["year"]
 
         if len(institutions_filter)==0:
-            search_dict={}
+            search_dict={"policies.id":ObjectId(idx)}
             in_list=[]
             if groups:
                 in_list.extend(groups_list)
