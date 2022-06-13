@@ -143,8 +143,9 @@ class CompendiumApp(sdsPluginBase):
             final_year=end_year
 
         filters={
+            "years":{
             "start_year":initial_year if initial_year!=9999 else "",
-            "end_year":final_year if final_year!=0 else "",
+            "end_year":final_year if final_year!=0 else ""},
             "groups":groups_filter,
             "institutions":institutions_filter
         }
