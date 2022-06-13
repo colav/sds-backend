@@ -855,11 +855,11 @@ class PoliciesApp(sdsPluginBase):
             if end_year:
                 pipeline.append({"$match":{"year_published":{"$lte":end_year}}})
             pipeline.extend([
-                {"$project":{"authors":1,"citations_count":1}},
-                {"$group":{"_id":"$authors.id","products_count":{"$sum":1},"citations_count":{"$sum":"$citations_count"},"author":{"$first":"$authors"}}},
+                {"$project":{"authors":1,"citations_count":1,"subjects":1}},
+                {"$group":{"_id":"$authors.id","products_count":{"$sum":1},"citations_count":{"$sum":"$citations_count"},"author":{"$first":"$authors"},"subjects":{"$last":"$subjects"}}},
                 {"$sort":{"citations_count":-1}},
                 {"$project":{"author.id":1,"author.full_name":1,"author.affiliations":1,
-                    "products_count":1,"citations_count":1}}
+                    "products_count":1,"citations_count":1,"subjects":1}}
             ])
 
             total_results = self.colav_db["person"].count_documents({"policies.id":ObjectId(idx)})
@@ -887,14 +887,13 @@ class PoliciesApp(sdsPluginBase):
 
             result= self.colav_db["works"].aggregate(pipeline,allowDiskUse=True)
         
-            entry = []
+            data = []
 
             for reg in result:
                 group_name = ""
                 group_id = ""
                 inst_name=""
                 inst_id=""
-                print(reg)
                 if "author" in reg.keys():
                     if "affiliations" in reg["author"].keys():
                         if len(reg["author"]["affiliations"])>0:
@@ -918,17 +917,23 @@ class PoliciesApp(sdsPluginBase):
                                                 inst_name=aff["name"]
                                                 inst_id=aff["id"]  
 
-                            entry.append({
+                            entry={
                                 "id":reg["_id"],
                                 "name":reg["author"]["full_name"],
+                                "subjects":[],
                                 "products_count":reg["products_count"],
                                 "citations_count":reg["citations_count"],
                                 "affiliation":{"institution":{"name":inst_name, 
                                                     "id":inst_id},
                                             "group":{"name":group_name, "id":group_id}}
-                            })
+                            }
+                            for subs in reg["subjects"]:
+                                if subs["source"]=="openalex":
+                                    entry["subjects"]=subs["subjects"]
+                                    break
+                            data.append(entry)
             
-        return {"total":total_results,"page":page,"count":len(entry),"data":entry}
+        return {"total":total_results,"page":page,"count":len(entry),"data":data}
 
     @endpoint('/app/policies', methods=['GET'])
     def app_policies(self):
