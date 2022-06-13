@@ -344,20 +344,32 @@ class CompendiumApp(sdsPluginBase):
 
             year_index={}
 
-            for i,prod in enumerate(reg["products_by_year"]):
-                if prod["year"]<start_year or prod["year"]>end_year:
-                    continue
+            i=0
+            for prod in reg["products_by_year"]:
+                if start_year:
+                    if prod["year"]<start_year:
+                        continue
+                if end_year:
+                    if prod["year"]>end_year:
+                        continue
                 entry["plot"].append({
                     "year":prod["year"],
                     "products":prod["value"],
                     "citations":0
                 })
                 year_index[prod["year"]]=i
+                i+=1
+
             if "citations_by_year" in reg.keys():
                 for cit in reg["citations_by_year"]:
-                    if cit["year"]<start_year or cit["year"]>end_year:
-                        continue
+                    if start_year:
+                        if cit["year"]<start_year:
+                            continue
+                    if end_year:
+                        if cit["year"]>end_year:
+                            continue
                     if cit["year"] in year_index.keys():
+                        i=year_index[cit["year"]]
                         entry["plot"][i]["citations"]=cit["value"]
                     else:
                         entry["plot"].append({
@@ -471,7 +483,7 @@ class CompendiumApp(sdsPluginBase):
         return {"data":data}
 
 
-    def get_institutions(self,page=1,max_results=10,groups="",institutions="",sort="citations",direction="descending"):
+    def get_institutions(self,page=1,max_results=10,groups="",institutions="",start_year=None,end_year=None,sort="citations",direction="descending"):
 
         if not page:
             page=1
@@ -504,12 +516,6 @@ class CompendiumApp(sdsPluginBase):
                 return None
 
         search_dict={"types.type":{"$ne":"group"}}
-        if start_year or end_year:
-            search_dict["products_by_year.year"]={}
-        if start_year:
-            search_dict["products_by_year.year"]["$gte"]=start_year
-        if end_year:
-            search_dict["products_by_year.year"]["$lte"]=end_year
         in_list=[]
         if groups:
             in_list.extend(groups.split())
@@ -564,20 +570,31 @@ class CompendiumApp(sdsPluginBase):
             if entry["subjects"]:
                 entry["subjects"]=entry["subjects"][:10] if len(entry["subjects"])>=10 else entry["subjects"]
             year_index={}
-            for i,prod in enumerate(reg["products_by_year"]):
-                if prod["year"]<start_year or prod["year"]>end_year:
-                    continue
+            i=0
+            for prod in reg["products_by_year"]:
+                if start_year:
+                    if prod["year"]<start_year:
+                        continue
+                if end_year:
+                    if prod["year"]>end_year:
+                        continue
                 entry["plot"].append({
                     "year":prod["year"],
                     "products":prod["value"],
                     "citations":0
                 })
                 year_index[prod["year"]]=i
+                i+=1
             if "citations_by_year" in reg.keys():
                 for cit in reg["citations_by_year"]:
-                    if cit["year"]<start_year or cit["year"]>end_year:
-                        continue
+                    if start_year:
+                        if cit["year"]<start_year:
+                            continue
+                    if end_year:
+                        if cit["year"]>end_year:
+                            continue
                     if cit["year"] in year_index.keys():
+                        i=year_index[cit["year"]]
                         entry["plot"][i]["citations"]=cit["value"]
                     else:
                         entry["plot"].append({
@@ -639,7 +656,9 @@ class CompendiumApp(sdsPluginBase):
             max_results=self.request.args.get('max')
             page=self.request.args.get('page')
             sort=self.request.args.get('sort')
-            institutions=self.get_institutions(page=page,max_results=max_results,sort=sort)
+            start_year=self.request.args.get('start_year')
+            end_year=self.request.args.get('end_year')
+            institutions=self.get_institutions(page=page,start_year=start_year,end_year=end_year,max_results=max_results,sort=sort)
             if institutions:    
                 response = self.app.response_class(
                 response=self.json.dumps(institutions),
