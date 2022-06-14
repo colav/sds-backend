@@ -100,7 +100,7 @@ class PoliciesApp(sdsPluginBase):
                                 final_year=pby["year"]
 
         if len(groups_filter)==0:
-            search_dict={}
+            search_dict={"policies.id":ObjectId(idx)}
             in_list=[]
             if institutions :
                 in_list.extend(institutions_list)
@@ -133,7 +133,7 @@ class PoliciesApp(sdsPluginBase):
                                 final_year=pby["year"]
 
         if len(institutions_filter)==0:
-            search_dict={}
+            search_dict={"policies.id":ObjectsId(idx)}
             in_list=[]
             if groups:
                 in_list.extend(groups_list)
@@ -421,8 +421,13 @@ class PoliciesApp(sdsPluginBase):
                     "open_access_status":paper["bibliographic_info"]["open_access_status"] if "open_access_status" in paper["bibliographic_info"] else "",
                     "year_published":paper["year_published"],
                     "citations_count":paper["citations_count"] if "citations_count" in paper.keys() else 0,
-                    "subjects":[{"name":reg["name"],"id":reg["id"]}for reg in paper["subjects"]] if "subjects" in paper.keys() else  []
+                    "subjects":[]
                 }
+
+                for subs in paper["subjects"]:
+                    if subs["source"]=="openalex":
+                        entry["subjects"]=subs["subjects"]
+                        break
 
                 if "source" in paper.keys():
                     source=self.colav_db["sources"].find_one({"_id":paper["source"]["id"]})
