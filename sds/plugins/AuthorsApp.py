@@ -11,31 +11,25 @@ class AuthorsApp(sdsPluginBase):
     def __init__(self, sds):
         super().__init__(sds)
 
-    def get_info(self,idx):
-        initial_year=0
-        final_year=0
+    def get_info(self,idx,institutions=[],groups=[],start_year=None,end_year=None):
+        initial_year=9999
+        final_year = 0
 
-        if idx:
-            result=self.colav_db['documents'].find({"authors.id":ObjectId(idx)},
-                {"year_published":1}).sort([("year_published",ASCENDING)]).limit(1)
-            if result:
-                result=list(result)
-                if len(result)>0:
-                    initial_year=result[0]["year_published"]
-            result=self.colav_db['documents'].find({"authors.id":ObjectId(idx)},
-                {"year_published":1}).sort([("year_published",DESCENDING)]).limit(1)
-            if result:
-                result=list(result)
-                if len(result)>0:
-                    final_year=result[0]["year_published"]
-
-        filters={
-            "start_year":initial_year if initial_year!=0 else "",
-            "end_year":final_year if final_year!=0 else ""
-        }
+        if start_year:
+            try:
+                start_year=int(start_year)
+            except:
+                print("Could not convert start year to int")
+                return None
+        if end_year:
+            try:
+                end_year=int(end_year)
+            except:
+                print("Could not convert end year to int")
+                return None
 
 
-        author = self.colav_db['authors'].find_one({"_id":ObjectId(idx)})
+        author = self.colav_db['person'].find_one({"_id":ObjectId(idx)})
         if author:
             entry={
                 "id":author["_id"],
@@ -72,20 +66,22 @@ class AuthorsApp(sdsPluginBase):
             if "affiliations" in author.keys():
                 if len(author["affiliations"]):
                     for aff in author["affiliations"]:
-                        if not "type" in aff.keys():
-                            entry["affiliation"]["institution"]["id"]=aff["id"]
-                            entry["affiliation"]["institution"]["name"]=aff["name"]
-                        else:
-                            if aff["type"]=="group":
-                                entry["affiliation"]["group"]["id"]  =aff["id"]
-                                entry["affiliation"]["group"]["name"]=aff["name"]
-            
+                        for typ in aff["types"]:
+                            if typ["type"]=="group":
+                                entry["affiliation"]["group"]={
+                                    "name":aff["name"],
+                                    "id":aff["id"]
+                                }
+                            else:   
+                                entry["affiliation"]["institution"]["name"]=aff["name"]
+                                entry["affiliation"]["institution"]["id"]  =aff["id"]
+        
             if entry["affiliation"]["institution"]["id"] != "":
                     inst_db=self.colav_db["affiliations"].find_one({"_id":ObjectId(entry["affiliation"]["institution"]["id"])})
                     if inst_db:
-                        #entry["country_code"]=inst_db["addresses"][0]["country_code"]
-                        #entry["country"]=inst_db["addresses"][0]["country"]
-                        entry["logo"]=inst_db["logo_url"]
+                        for ext in inst_db["external_urls"]:
+                            if ext["source"]=="logo":
+                                entry["logo"]=ext["url"]
 
             sources=[]
             for ext in author["external_ids"]:
@@ -94,22 +90,147 @@ class AuthorsApp(sdsPluginBase):
                     sources.append("researcherid")
                     entry["external_urls"].append({
                         "source":"researcherid",
-                        "url":"https://publons.com/researcher/"+ext["value"]})
+                        "url":"https://publons.com/researcher/"+ext["id"]})
                 if ext["source"]=="scopus" and not "scopus" in sources:
                     sources.append("scopus")
                     entry["external_urls"].append({
                         "source":"scopus",
-                        "url":"https://www.scopus.com/authid/detail.uri?authorId="+ext["value"]})
+                        "url":"https://www.scopus.com/authid/detail.uri?authorId="+ext["id"]})
                 if ext["source"]=="scholar" and not "scholar" in sources:
                     sources.append("scholar")
                     entry["external_urls"].append({
                         "source":"scholar",
-                        "url":"https://scholar.google.com.co/citations?user="+ext["value"]})
+                        "url":"https://scholar.google.com.co/citations?user="+ext["id"]})
                 if ext["source"]=="orcid" and not "orcid" in sources:
                     sources.append("orcid")
                     entry["external_urls"].append({
                         "source":"orcid",
-                        "url":"https://orcid.org/"+ext["value"]})
+                        "url":"https://orcid.org/"+ext["id"]})
+                if ext["source"]=="linkedin" and not "linkedin" in sources:
+                    sources.append("linkedin")
+                    entry["external_urls"].append({
+                        "source":"linkedin",
+                        "url":"https://www.linkedin.com/in/"+ext["id"]})
+
+            institutions_list=institutions.split() if institutions else []
+            groups_list=groups.split() if groups else []
+
+            groups_filter=[]
+            institutions_filter=[]
+            if len(groups_list)!=0:
+                for group in groups_list:
+                    res=self.colav_db["affiliations"].find_one({"_id":ObjectId(group),"types.type":"group"})
+                    if res:
+                        name=""
+                        for n in res["names"]:
+                            if n["lang"]=="es":
+                                name=n["name"]
+                                break
+                            elif n["lang"]=="en":
+                                name=n["name"]
+                        groups_filter.append({"name":name,"id":group})
+                        for pby in res["products_by_year"]:
+                            if pby["year"]<initial_year:
+                                initial_year=pby["year"]
+                            if pby["year"]>final_year:
+                                final_year=pby["year"]
+            if len(institutions_list)!=0:
+                for inst in institutions_list:
+                    res=self.colav_db["affiliations"].find_one({"_id":ObjectId(inst)})
+                    if res:
+                        name=""
+                        for n in res["names"]:
+                            if n["lang"]=="es":
+                                name=n["name"]
+                                break
+                            elif n["lang"]=="en":
+                                name=n["name"]
+                        institutions_filter.append({"name":name,"id":inst})
+                        if initial_year==9999:
+                            for pby in res["products_by_year"]:
+                                if pby["year"]<initial_year:
+                                    initial_year=pby["year"]
+                        if final_year==0:
+                            for pby in res["products_by_year"]:
+                                if pby["year"]>final_year:
+                                    final_year=pby["year"]
+
+            if len(groups_filter)==0:
+                search_dict={}
+                in_list=[]
+                if institutions :
+                    in_list.extend(institutions_list)
+                if len(in_list)>0:
+                    def_list=[]
+                    for iid in in_list:
+                        def_list.append(ObjectId(iid))
+                    search_dict["relations.id"]={"$in":def_list}
+                if start_year or end_year:
+                    search_dict["products_by_year.year"]={}
+                if start_year:
+                    search_dict["products_by_year.year"]["$gte"]=start_year
+                if end_year:
+                    search_dict["products_by_year.year"]["$lte"]=end_year
+                for reg in self.colav_db["affiliations"].find(search_dict,{"names":1,"relations":1,"types":1,"products_by_year":1}):
+                    for typ in reg["types"]: 
+                        if typ["type"]=="group":
+                            name=reg["names"][0]["name"]
+                            for n in reg["names"]:
+                                if n["lang"]=="es":
+                                    name=n["name"]
+                                    break
+                                if n["lang"]=="en":
+                                    name=n["name"]
+                            groups_filter.append({"name":name,"id":reg["_id"]})
+                            for pby in reg["products_by_year"]:
+                                if pby["year"]<initial_year:
+                                    initial_year=pby["year"]
+                                if pby["year"]>final_year:
+                                    final_year=pby["year"]
+
+            if len(institutions_filter)==0:
+                search_dict={}
+                in_list=[]
+                if groups:
+                    in_list.extend(groups_list)
+                elif len(groups_list)>0:
+                    for gr in groups_list:
+                        in_list.append(str(gr["id"]))
+                if len(in_list)>0:
+                    def_list=[]
+                    for iid in in_list:
+                        def_list.append(ObjectId(iid))
+                    search_dict["relations.id"]={"$in":def_list}
+                if start_year or end_year:
+                    search_dict["products_by_year.year"]={}
+                if start_year:
+                    search_dict["products_by_year.year"]["$gte"]=start_year
+                if end_year:
+                    search_dict["products_by_year.year"]["$lte"]=end_year
+                for reg in self.colav_db["affiliations"].find(search_dict,{"names":1,"relations":1,"types":1}):
+                    for typ in reg["types"]: 
+                        if typ["type"]!="group":
+                            name=reg["names"][0]["name"]
+                            for n in reg["names"]:
+                                if n["lang"]=="es":
+                                    name=n["name"]
+                                    break
+                                if n["lang"]=="en":
+                                    name=n["name"]
+                            institutions_filter.append({"name":name,"id":reg["_id"]})
+
+            if start_year:
+                initial_year=start_year
+            if end_year:
+                final_year=end_year
+
+            filters={
+                "years":{
+                "start_year":initial_year if initial_year!=9999 else "",
+                "end_year":final_year if final_year!=0 else ""},
+                "groups":groups_filter,
+                "institutions":institutions_filter
+            }
 
             return {"data": entry, "filters": filters }
         else:
@@ -125,7 +246,6 @@ class AuthorsApp(sdsPluginBase):
             "yearly_citations":[],
             "geo": []
         }
-
 
         if start_year:
             try:
