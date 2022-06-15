@@ -612,7 +612,7 @@ class SubjectsApp(sdsPluginBase):
 
         return {"total":total,"page":page,"count":len(data),"data":data}
     
-    def get_groups(self,idx=None,page=1,max_results=100,institutions="",sort="citations",direction="descending"):
+    def get_groups(self,idx=None,page=1,max_results=100,start_year=None,end_year=None,institutions="",sort="citations",direction="descending"):
         search_dict={"types.type":"group","subjects.subjects.id":ObjectId(idx)}
         if institutions:
             institutions_list=[ObjectId(inst) for inst in institutions.split()]
@@ -991,8 +991,7 @@ class SubjectsApp(sdsPluginBase):
             idx = self.request.args.get('id')
             max_results=self.request.args.get('max')
             page=self.request.args.get('page')
-            institutions=self.request.args.get('institutions')
-            res=self.get_institutions(idx,page=page,max_results=max_results,institutions=institutions)
+            res=self.get_institutions(idx,page=page,max_results=max_results)
             if res:
                 response = self.app.response_class(
                 response=self.json.dumps(res),
