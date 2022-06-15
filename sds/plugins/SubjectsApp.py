@@ -881,7 +881,7 @@ class SubjectsApp(sdsPluginBase):
                                     break
                             data.append(entry)
             
-        return {"total":total_results,"page":page,"count":len(entry),"data":data}
+        return {"total":total_results,"page":page,"count":len(data),"data":data}
 
 
 
