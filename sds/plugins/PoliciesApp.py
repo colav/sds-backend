@@ -133,7 +133,7 @@ class PoliciesApp(sdsPluginBase):
                                 final_year=pby["year"]
 
         if len(institutions_filter)==0:
-            search_dict={"policies.id":ObjectsId(idx)}
+            search_dict={"policies.id":ObjectId(idx)}
             in_list=[]
             if groups:
                 in_list.extend(groups_list)
@@ -941,7 +941,7 @@ class PoliciesApp(sdsPluginBase):
                                     break
                             data.append(entry)
             
-        return {"total":total_results,"page":page,"count":len(entry),"data":data}
+        return {"total":total_results,"page":page,"count":len(data),"data":data}
 
     @endpoint('/app/policies', methods=['GET'])
     def app_policies(self):
