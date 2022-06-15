@@ -603,7 +603,7 @@ class AuthorsApp(sdsPluginBase):
 
         return venn_source
 
-    def get_production(self,idx=None,max_results=100,page=1,start_year=None,end_year=None,sort=None,direction=None):
+    def get_production(self,idx=None,max_results=100,institutions=None,groups=None,page=1,start_year=None,end_year=None,sort=None,direction="descending"):
         papers=[]
         total=0
         open_access=[]
@@ -620,151 +620,58 @@ class AuthorsApp(sdsPluginBase):
             except:
                 print("Could not convert end year to int")
                 return None
-        
+                
+
+        search_dict={}
+        venn_query={}
+        oa_query={}
+
         if idx:
-            if start_year and not end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year},"authors.id":ObjectId(idx)})
-                venn_query={"year_published":{"$gte":start_year},"authors.id":ObjectId(idx)}
-                val=self.colav_db['documents'].count_documents({"open_access_status":"green","year_published":{"$gte":start_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","year_published":{"$gte":start_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"gold"  ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","year_published":{"$gte":start_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"bronze","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","year_published":{"$gte":start_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"closed","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","year_published":{"$gte":start_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"hybrid","value":val})
-            elif end_year and not start_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$lte":end_year},"authors.id":ObjectId(idx)})
-                venn_query={"year_published":{"$lte":end_year},"authors.id":ObjectId(idx)}
-                val=self.colav_db['documents'].count_documents({"open_access_status":"green","year_published":{"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","year_published":{"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"gold"  ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","year_published":{"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"bronze","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","year_published":{"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"closed","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","year_published":{"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"hybrid","value":val})
-            elif start_year and end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)})
-                venn_query={"year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)}
-                val=self.colav_db['documents'].count_documents({"open_access_status":"green","year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"gold"  ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"bronze","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"closed","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"hybrid","value":val})
-            else:
-                cursor=self.colav_db['documents'].find({"authors.id":ObjectId(idx)})
-                venn_query={"authors.id":ObjectId(idx)}
-                val=self.colav_db['documents'].count_documents({"open_access_status":"green","authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"gold"  ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"bronze","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"closed","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"hybrid","value":val})
-        else:
-            cursor=self.colav_db['documents'].find() 
-            venn_query={}
-        total=cursor.count()
-        if not page:
-            page=1
-        else:
-            try:
-                page=int(page)
-            except:
-                print("Could not convert end page to int")
-                return None
-        if not max_results:
-            max_results=100
-        else:
-            try:
-                max_results=int(max_results)
-            except:
-                print("Could not convert end max to int")
-                return None
+            search_dict={"authors.id":ObjectId(idx)}
+            venn_query={"authors.id":ObjectId(idx)}
+            oa_query={"authors.id":ObjectId(idx)}
+                
+        if start_year or end_year:
+            search_dict["year_published"]={}
+            venn_query["year_published"]={}
+            oa_query["year_published"]={}
+        if start_year:
+            search_dict["year_published"]["$gte"]=start_year
+            venn_query["year_published"]["$gte"]=start_year
+            oa_query["year_published"]["$gte"]=start_year
+        if end_year:
+            search_dict["year_published"]["$lte"]=end_year
+            venn_query["year_published"]["$lte"]=end_year
+            oa_query["year_published"]["$lte"]=end_year
+
+        in_list=[]
+        if groups:
+            in_list.extend(groups.split())
+        if institutions:
+            in_list.extend(institutions.split())
+        if len(in_list)>0:
+            def_list=[]
+            for iid in in_list:
+                def_list.append(ObjectId(iid))
+            search_dict["_id"]={"$in":def_list}
+            venn_query["_id"]={"$in":def_list}
+            oa_query["_id"]={"$in":def_list}
         
+        cursor=self.colav_db["works"].find(search_dict)
+        total=cursor.count()
 
-        if sort=="citations" and direction=="ascending":
-            cursor.sort([("citations_count",ASCENDING)])
-        if sort=="citations" and direction=="descending":
-            cursor.sort([("citations_count",DESCENDING)])
-        if sort=="year" and direction=="ascending":
-            cursor.sort([("year_published",ASCENDING)])
-        if sort=="year" and direction=="descending":
-            cursor.sort([("year_published",DESCENDING)])
-
-        cursor=cursor.skip(max_results*(page-1)).limit(max_results)
-
-        for paper in cursor:
-            entry={
-                "id":paper["_id"],
-                "title":paper["titles"][0]["title"],
-                "citations_count":paper["citations_count"],
-                "year_published":paper["year_published"],
-                "open_access_status":paper["open_access_status"]
-            }
-
-            source=self.colav_db["sources"].find_one({"_id":paper["source"]["id"]})
-            if source:
-                entry["source"]={"name":source["title"],"id":str(source["_id"])}
-            authors=[]
-            for author in paper["authors"]:
-                au_entry={}
-                author_db=self.colav_db["authors"].find_one({"_id":author["id"]})
-                if author_db:
-                    au_entry={"full_name":author_db["full_name"],"id":author_db["_id"]}
-                affiliations=[]
-                for aff in author["affiliations"]:
-                    aff_entry={}
-                    group_entry={}
-                    if not "id" in aff.keys():
-                        continue
-                    if "type" in aff.keys():
-                        if aff["type"]=="group":
-                            group_entry= ({"name":aff["name"],"id":aff["id"]})
-                            affiliations.append(group_entry)
-                    else:
-                        aff_entry={"name":aff["name"],"id":aff["id"]}
-
-                    affiliations.append(aff_entry)
-                au_entry["affiliations"]=affiliations
-                authors.append(au_entry)
-            entry["authors"]=authors
-            papers.append(entry)
-
-        tipos = self.colav_db['documents'].distinct("publication_type.type",{"authors.id":ObjectId(idx)})
+        for oa in ["green","gold","bronze","closed","hybrid"]:
+            oa_query["bibliographic_info.open_access_status"]=oa
+            val=self.colav_db["works"].count_documents(oa_query)
+            if val!=0:
+                open_access.append({"type":oa ,"value":val})
+        
+        types = self.colav_db['works'].distinct("types",{"authors.id":ObjectId(idx)})
+        tipos=[]
+        for tipo in types:
+            if tipo["source"]=="minciencias":
+                if not tipo["type"] in tipos:
+                    tipos.append(tipo["type"])
 
         return {
             "open_access":open_access,
@@ -772,7 +679,8 @@ class AuthorsApp(sdsPluginBase):
             "types":tipos
             }
 
-    def get_production_by_type(self,idx=None,max_results=100,page=1,start_year=None,end_year=None,sort=None,direction=None,tipo=None):
+    def get_production_by_type(self,idx=None,max_results=100,page=1,
+            groups=None,institutions=None,start_year=None,end_year=None,sort="year",direction="descending",tipo=None):
         total = 0
 
         if start_year:
@@ -788,24 +696,32 @@ class AuthorsApp(sdsPluginBase):
                 print("Could not convert end year to int")
                 return None
 
+        search_dict={"types.type":tipo}
+
         if idx:
+            search_dict["authors.id"]=ObjectId(idx)
+                
+        if start_year or end_year:
+            search_dict["year_published"]={}
+        if start_year:
+            search_dict["year_published"]["$gte"]=start_year
+        if end_year:
+            search_dict["year_published"]["$lte"]=end_year
 
-            if start_year and not end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year},"authors.id":ObjectId(idx),
-                    "publication_type.type":tipo})
-
-            elif end_year and not start_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$lte":end_year},"authors.id":ObjectId(idx),
-                    "publication_type.type":tipo})
-
-            elif start_year and end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year,"$lte":end_year},
-                    "authors.id":ObjectId(idx), "publication_type.type":tipo})
-
-            else:
-                cursor=self.colav_db['documents'].find({"authors.id":ObjectId(idx),"publication_type.type":tipo})
+        in_list=[]
+        if groups:
+            in_list.extend(groups.split())
+        if institutions:
+            in_list.extend(institutions.split())
+        if len(in_list)>0:
+            def_list=[]
+            for iid in in_list:
+                def_list.append(ObjectId(iid))
+            search_dict["authors.affiliations.id"]={"$in":def_list}
         
+        cursor=self.colav_db["works"].find(search_dict)
         total=cursor.count()
+
         if not page:
             page=1
         else:
@@ -834,39 +750,77 @@ class AuthorsApp(sdsPluginBase):
 
         cursor=cursor.skip(max_results*(page-1)).limit(max_results)
 
-        entry=[]
+        if cursor:
+            paper_list=[]
+            for paper in cursor:
+                entry={
+                    "id":paper["_id"],
+                    "title":paper["titles"][0]["title"],
+                    "authors":[],
+                    "source":"",
+                    "open_access_status":paper["bibliographic_info"]["open_access_status"] if "open_access_status" in paper["bibliographic_info"] else "",
+                    "year_published":paper["year_published"],
+                    "citations_count":paper["citations_count"] if "citations_count" in paper.keys() else 0,
+                    "subjects":[]
+                }
 
-        for doc in cursor:
-            authors=[]
-            for author in doc["authors"]:
-                au_entry={"full_name":author["full_name"],"id":author["id"],"affiliation":{}}
-                for aff in author["affiliations"]:
-                    if "type" in aff.keys():
-                        if aff["type"]=="group":
-                            au_entry["affiliation"]["group"]={"name":aff["name"],"id":aff["id"]}        
-                    else:
-                        au_entry["affiliation"]["institution"]={"name":aff["name"],"id":aff["id"]}
-                authors.append(au_entry)
+                for subs in paper["subjects"]:
+                    if subs["source"]=="openalex":
+                        entry["subjects"]=subs["subjects"]
+                        break
 
-            try:
-                if doc["publication_type"]["source"]=="lens":
+                if "source" in paper.keys():
+                    source=self.colav_db["sources"].find_one({"_id":paper["source"]["id"]})
+                    if source:
+                        entry["source"]={"name":source["title"],"id":source["_id"]}
+                
+                authors=[]
+                for author in paper["authors"]:
+                    author_entry={
+                        "id":author["id"],
+                        "full_name":author["full_name"],
+                        "affiliation": {
+                            "institution":{"name":"","id":""}
+                        }
+                    }
+                    if "affiliations" in author.keys():
+                        if len(author["affiliations"])>0:
+                            for aff in author["affiliations"]:
+                                if "types" in aff.keys():
+                                    for typ in aff["types"]:
+                                        if typ["type"]=="group":
+                                            if groups:
+                                                if aff["id"] in aff_list:
+                                                    author_entry["affiliation"]["group"]={
+                                                        "name":aff["name"],
+                                                        "id":aff["id"]
+                                                    }
+                                            else:
+                                                author_entry["affiliation"]["group"]={
+                                                    "name":aff["name"],
+                                                    "id":aff["id"]
+                                                }
+                                        else:
+                                            if institutions:
+                                                if aff["id"] in aff_list:
+                                                    author_entry["affiliation"]["institution"]["name"]=aff["name"]
+                                                    author_entry["affiliation"]["institution"]["id"]  =aff["id"]
+                                            else:    
+                                                author_entry["affiliation"]["institution"]["name"]=aff["name"]
+                                                author_entry["affiliation"]["institution"]["id"]  =aff["id"]
+                    authors.append(author_entry)
 
-                    source=self.colav_db["sources"].find_one({"_id":doc["source"]["id"]})
+                entry["authors"]=authors
 
-                    entry.append({
-                    "id":doc["_id"],
-                    "title":doc["titles"][0]["title"],
-                    "citations_count":doc["citations_count"],
-                    "year_published":doc["year_published"],
-                    "open_access_status":doc["open_access_status"],
-                    "source":{"name":source["title"],"id":str(source["_id"])},
-                    "authors":authors,
-                    "subjects":[{"name":reg["name"],"id":reg["id"]}for reg in doc["subjects"]] if "subjects" in doc.keys() else  []
-                    })
+                paper_list.append(entry)
 
-            except:
-                continue
-        return {"total":total,"page":page,"count":len(entry),"data":entry}
+            return {"data":paper_list,
+                    "count":len(paper_list),
+                    "page":page,
+                    "total_results":total
+                }
+        else:
+            return None
     
     def get_csv(self,idx=None,start_year=None,end_year=None,sort=None,direction=None):
         papers=[]
@@ -1062,11 +1016,27 @@ class AuthorsApp(sdsPluginBase):
             end_year=self.request.args.get('end_year')
             sort=self.request.args.get('sort')
             tipo = self.request.args.get('type')
+            institutions=self.request.args.get('institutions')
+            groups=self.request.args.get('groups')
 
             if tipo == None: 
-                production=self.get_production(idx,max_results,page,start_year,end_year,sort,"descending")
+                production=self.get_production(idx=idx,
+                    max_results=max_results,
+                    page=page,
+                    start_year=start_year,
+                    end_year=end_year,
+                    groups=groups,
+                    institutions=institutions,
+                    sort=sort)
             else:
-                production=self.get_production_by_type(idx,max_results,page,start_year,end_year,sort,"descending",tipo)
+                production=self.get_production_by_type(idx=idx,
+                    max_results=max_results,
+                    page=page,
+                    start_year=start_year,
+                    end_year=end_year,
+                    groups=groups,
+                    institutions=institutions,
+                    sort=sort,tipo=tipo)
 
             if production:
                 response = self.app.response_class(
