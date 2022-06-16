@@ -185,80 +185,80 @@ class PoliciesApp(sdsPluginBase):
             "scholar_lens_wos":0,"scholar_wos_scopus":0,"scholar_lens_scopus":0,"lens_wos_scopus":0,
             "scholar_lens_wos_scopus":0
         }
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":{"$ne":"scopus"}}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":{"$ne":"scopus"}}]
         venn_source["scholar"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":{"$ne":"scopus"}}]
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":"lens"},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":{"$ne":"scopus"}}]
         venn_source["lens"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":{"$ne":"scopus"}}]
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":"wos"},
+                {"updated.source":{"$ne":"scopus"}}]
         venn_source["wos"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":"scopus"}]
         venn_source["scopus"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":{"$ne":"scopus"}}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":"lens"},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":{"$ne":"scopus"}}]
         venn_source["scholar_lens"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":{"$ne":"scopus"}}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":"wos"},
+                {"updated.source":{"$ne":"scopus"}}]
         venn_source["scholar_wos"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":"scopus"}]
         venn_source["scholar_scopus"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":{"$ne":"scopus"}}]
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":"lens"},
+                {"updated.source":"wos"},
+                {"updated.source":{"$ne":"scopus"}}]
         venn_source["lens_wos"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":"lens"},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":"scopus"}]
         venn_source["lens_scopus"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":"wos"},
+                {"updated.source":"scopus"}]
         venn_source["wos_scopus"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":{"$ne":"scopus"}}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":"lens"},
+                {"updated.source":"wos"},
+                {"updated.source":{"$ne":"scopus"}}]
         venn_source["scholar_lens_wos"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":"wos"},
+                {"updated.source":"scopus"}]
         venn_source["scholar_wos_scopus"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":"lens"},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":"scopus"}]
         venn_source["scholar_lens_scopus"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":"lens"},
+                {"updated.source":"wos"},
+                {"updated.source":"scopus"}]
         venn_source["lens_wos_scopus"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":"lens"},
+                {"updated.source":"wos"},
+                {"updated.source":"scopus"}]
         venn_source["scholar_lens_wos_scopus"]=self.colav_db["works"].count_documents(venn_query)
 
         return venn_source
@@ -911,10 +911,10 @@ class PoliciesApp(sdsPluginBase):
                                         if typ["type"]=="group":
                                             if groups:
                                                 if aff["id"] in aff_list:
-                                                    group_name=aff["name"],
+                                                    group_name=aff["name"]
                                                     group_id=aff["id"]
                                             else:
-                                                group_name=aff["name"],
+                                                group_name=aff["name"]
                                                 group_id=aff["id"]
                                         else:
                                             if institutions:
