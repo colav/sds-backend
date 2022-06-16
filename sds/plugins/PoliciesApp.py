@@ -950,7 +950,12 @@ class PoliciesApp(sdsPluginBase):
 
         if data=="info":
             idx = self.request.args.get('id')
-            info = self.get_info(idx)
+            start_year=self.request.args.get('start_year')
+            end_year=self.request.args.get('end_year')
+            institutions=self.request.args.get('institutions')
+            groups=self.request.args.get('groups')
+            info = self.get_info(idx,groups=groups,institutions=institutions,
+            start_year=start_year,end_year=end_year)
             if info:    
                 response = self.app.response_class(
                 response=self.json.dumps(info),

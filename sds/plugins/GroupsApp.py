@@ -11,32 +11,35 @@ class GroupsApp(sdsPluginBase):
     def __init__(self, sds):
         super().__init__(sds)
 
-    def get_info(self,idx):
-
-        initial_year=0
+    def get_info(self,idx,institutions=[],groups=[],start_year=None,end_year=None):
+        initial_year=9999
         final_year = 0
-        
-        result=self.colav_db['documents'].find({"authors.affiliations.id":ObjectId(idx)},{"year_published":1}).sort([("year_published",ASCENDING)]).limit(1)
-        if result:
-            result=list(result)
-            if len(result)>0:
-                initial_year=result[0]["year_published"]
-        result=self.colav_db['documents'].find({"authors.affiliations.id":ObjectId(idx)},{"year_published":1}).sort([("year_published",DESCENDING)]).limit(1)
-        if result:
-            result=list(result)
-            if len(result)>0:
-                final_year=result[0]["year_published"]
-        
-        filters={
-            "start_year":initial_year if initial_year!=0 else "",
-            "end_year":final_year if final_year!=0 else ""
-        }
 
-        group = self.colav_db['affiliations'].find_one({"types":"group","_id":ObjectId(idx)})
+        if start_year:
+            try:
+                start_year=int(start_year)
+            except:
+                print("Could not convert start year to int")
+                return None
+        if end_year:
+            try:
+                end_year=int(end_year)
+            except:
+                print("Could not convert end year to int")
+                return None
+
+        group = self.colav_db['affiliations'].find_one({"types.type":"group","_id":ObjectId(idx)})
         if group:
+            name=""
+            for n in group["names"]:
+                if n["lang"]=="es":
+                    name=n["name"]
+                    break
+                elif n["lang"]=="en":
+                    name=n["name"]
             entry={"id":group["_id"],
-                "name":group["name"],
-                "type":group["types"][0],
+                "name":name,
+                "type":group["types"][0]["type"],
                 "abbreviations":"",
                 "external_urls":group["external_urls"],
                 "affiliation":{},
@@ -70,13 +73,31 @@ class GroupsApp(sdsPluginBase):
                 entry["abbreviations"]=group["abbreviations"][0]
             inst_id=""
             for rel in group["relations"]:
-                if "university" in rel["type"]:
-                    inst_id=rel["id"]
-                    break
+                for typ in rel["types"]:
+                    if "group"!=typ["type"]:
+                        inst_id=rel["id"]
+                        break
             if inst_id:
                 inst=self.colav_db['affiliations'].find_one({"_id":inst_id})
                 if inst:
-                    entry["affiliation"]={"institution":{"name":inst["name"],"id":inst_id,"logo":inst["logo_url"]}}
+                    name=""
+                    for n in inst["names"]:
+                        if n["lang"]=="es":
+                            name=n["name"]
+                            break
+                        elif n["lang"]=="en":
+                            name=n["name"]
+                    logo=""
+                    for ext in inst["external_ids"]:
+                        if ext["source"]=="logo":
+                            logo=ext["url"]
+                    entry["affiliation"]={"institution":{"name":name,"id":inst_id,"logo":logo}}
+            filters={"years":{}}
+            for pby in group["products_by_year"]:
+                if pby["year"]<initial_year:
+                    filters["years"]["initial_year"]=pby["year"]
+                if pby["year"]>final_year:
+                    filters["years"]["final_year"]=pby["year"]
 
             return {"data": entry, "filters": filters }
         else:
@@ -924,7 +945,12 @@ class GroupsApp(sdsPluginBase):
 
         if data=="info":
             idx = self.request.args.get('id')
-            info = self.get_info(idx)
+            start_year=self.request.args.get('start_year')
+            end_year=self.request.args.get('end_year')
+            institutions=self.request.args.get('institutions')
+            groups=self.request.args.get('groups')
+            info = self.get_info(idx,groups=groups,institutions=institutions,
+            start_year=start_year,end_year=end_year)
             if info:    
                 response = self.app.response_class(
                 response=self.json.dumps(info),
@@ -1028,46 +1054,6 @@ class GroupsApp(sdsPluginBase):
                 response=self.json.dumps(subjects),
                 status=200,
                 mimetype='application/json'
-                )
-            else:
-                response = self.app.response_class(
-                response=self.json.dumps({"status":"Request returned empty"}),
-                status=204,
-                mimetype='application/json'
-                )
-        elif data=="csv":
-            idx = self.request.args.get('id')
-            start_year=self.request.args.get('start_year')
-            end_year=self.request.args.get('end_year')
-            sort=self.request.args.get('sort')
-            production_csv=self.get_csv(idx,start_year,end_year,sort,"descending")
-            if production_csv:
-                response = self.app.response_class(
-                response=production_csv,
-                status=200,
-                mimetype='text/csv',
-                headers={"Content-disposition":
-                 "attachment; filename=groups.csv"}
-                )
-            else:
-                response = self.app.response_class(
-                response=self.json.dumps({"status":"Request returned empty"}),
-                status=204,
-                mimetype='application/json'
-                )
-        elif data=="json":
-            idx = self.request.args.get('id')
-            start_year=self.request.args.get('start_year')
-            end_year=self.request.args.get('end_year')
-            sort=self.request.args.get('sort')
-            production_json=self.get_json(idx,start_year,end_year,sort,"descending")
-            if production_json:
-                response = self.app.response_class(
-                response=production_json,
-                status=200,
-                mimetype='text/plain',
-                headers={"Content-disposition":
-                 "attachment; filename=groups.json"}
                 )
             else:
                 response = self.app.response_class(
