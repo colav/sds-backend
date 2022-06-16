@@ -114,7 +114,7 @@ class AuthorsApp(sdsPluginBase):
                         "url":"https://www.linkedin.com/in/"+ext["id"]})
 
             filters={"years":{}}
-            for pby in group["products_by_year"]:
+            for pby in author["products_by_year"]:
                 if pby["year"]<initial_year:
                     filters["years"]["initial_year"]=pby["year"]
                 if pby["year"]>final_year:
