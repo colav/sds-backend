@@ -115,7 +115,7 @@ class InstitutionsApp(sdsPluginBase):
         group=self.colav_db["affiliations"].find_one({"types.type":"group","_id":ObjectId(idx)})
         if group:
             if not "yearly_geo_citations" in group.keys():
-                return None
+                return {"error":"No information to process"}
             for year,alpha2,country,citations in group["yearly_geo_citations"]:
                 if year<start_year or year>end_year:
                     continue
@@ -133,7 +133,7 @@ class InstitutionsApp(sdsPluginBase):
                         "name":country_name
                     }
         else:
-            return None
+            return {"error":"No information to process"}
 
         for key,val in countries.items():
             countries[key]["log_count"]=log(val["count"])

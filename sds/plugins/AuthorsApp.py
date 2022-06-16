@@ -153,7 +153,7 @@ class AuthorsApp(sdsPluginBase):
         author=self.colav_db["person"].find_one({"_id":ObjectId(idx)})
         if author:
             if not "yearly_geo_citations" in author.keys():
-                return None
+                return {"error":"No information to process"}
             for year,alpha2,country,citations in author["yearly_geo_citations"]:
                 if year<start_year or year>end_year:
                     continue
@@ -171,7 +171,7 @@ class AuthorsApp(sdsPluginBase):
                         "name":country_name
                     }
         else:
-            return None
+            return {"error":"No information to process"}
 
         for key,val in countries.items():
             countries[key]["log_count"]=log(val["count"])

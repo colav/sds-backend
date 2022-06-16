@@ -118,21 +118,19 @@ class GroupsApp(sdsPluginBase):
             try:
                 start_year=int(start_year)
             except:
-                print("Could not convert start year to int")
-                return None
+                return {"error":"Could not convert start year to int"}
         if end_year:
             try:
                 end_year=int(end_year)
             except:
-                print("Could not convert end year to int")
-                return None
+                return {"error":"Could not convert start year to int"}
 
         countries={}
         years=[]
         group=self.colav_db["affiliations"].find_one({"types.type":"group","_id":ObjectId(idx)})
         if group:
             if not "yearly_geo_citations" in group.keys():
-                return None
+                return {"error":"No information to process"}
             for year,alpha2,country,citations in group["yearly_geo_citations"]:
                 if year<start_year or year>end_year:
                     continue
@@ -150,7 +148,7 @@ class GroupsApp(sdsPluginBase):
                         "name":country_name
                     }
         else:
-            return None
+            return {"error":"No information to process"}
 
         for key,val in countries.items():
             countries[key]["log_count"]=log(val["count"])
@@ -175,16 +173,14 @@ class GroupsApp(sdsPluginBase):
                 try:
                     page=int(page)
                 except:
-                    print("Could not convert end page to int")
-                    return None
+                    return {"error":"Could not convert start year to int"}
             if not max_results:
                 max_results=100
             else:
                 try:
                     max_results=int(max_results)
                 except:
-                    print("Could not convert end max to int")
-                    return None
+                    return {"error":"Could not convert start year to int"}
 
             
             skip = (max_results*(page-1))
@@ -238,21 +234,18 @@ class GroupsApp(sdsPluginBase):
             try:
                 limit=int(limit)
             except:
-                print("Could not convert limit to int")
-                return None
+                return {"error":"Could not convert start year to int"}
 
         if start_year:
             try:
                 start_year=int(start_year)
             except:
-                print("Could not convert start year to int")
-                return None
+                return {"error":"Could not convert start year to int"}
         if end_year:
             try:
                 end_year=int(end_year)
             except:
-                print("Could not convert end year to int")
-                return None
+                return {"error":"Could not convert start year to int"}
         if idx:
             result=self.colav_db["affiliations"].find_one({"_id":ObjectId(idx)})
         else:
@@ -294,14 +287,12 @@ class GroupsApp(sdsPluginBase):
             try:
                 start_year=int(start_year)
             except:
-                print("Could not convert start year to int")
-                return None
+                return {"error":"Could not convert start year to int"}
         if end_year:
             try:
                 end_year=int(end_year)
             except:
-                print("Could not convert end year to int")
-                return None
+                return {"error":"Could not convert start year to int"}
         if idx:
             pipeline=[
                 {"$match":{"authors.affiliations.id":ObjectId(idx)}}
@@ -508,14 +499,12 @@ class GroupsApp(sdsPluginBase):
             try:
                 start_year=int(start_year)
             except:
-                print("Could not convert start year to int")
-                return None
+                return {"error":"Could not convert start year to int"}
         if end_year:
             try:
                 end_year=int(end_year)
             except:
-                print("Could not convert end year to int")
-                return None
+                return {"error":"Could not convert start year to int"}
                 
 
         search_dict={}
@@ -582,14 +571,12 @@ class GroupsApp(sdsPluginBase):
             try:
                 start_year=int(start_year)
             except:
-                print("Could not convert start year to int")
-                return None
+                return {"error":"Could not convert start year to int"}
         if end_year:
             try:
                 end_year=int(end_year)
             except:
-                print("Could not convert end year to int")
-                return None
+                return {"error":"Could not convert start year to int"}
 
         search_dict={"types.type":tipo}
 
@@ -612,16 +599,14 @@ class GroupsApp(sdsPluginBase):
             try:
                 page=int(page)
             except:
-                print("Could not convert end page to int")
-                return None
+                return {"error":"Could not convert start year to int"}
         if not max_results:
             max_results=100
         else:
             try:
                 max_results=int(max_results)
             except:
-                print("Could not convert end max to int")
-                return None
+                return {"error":"Could not convert start year to int"}
         
         if sort=="citations" and direction=="ascending":
             cursor.sort([("citations_count",ASCENDING)])
@@ -706,10 +691,7 @@ class GroupsApp(sdsPluginBase):
             idx = self.request.args.get('id')
             start_year=self.request.args.get('start_year')
             end_year=self.request.args.get('end_year')
-            institutions=self.request.args.get('institutions')
-            groups=self.request.args.get('groups')
-            info = self.get_info(idx,groups=groups,institutions=institutions,
-            start_year=start_year,end_year=end_year)
+            info = self.get_info(idx, start_year=start_year,end_year=end_year)
             if info:    
                 response = self.app.response_class(
                 response=self.json.dumps(info),
