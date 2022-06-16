@@ -11,7 +11,7 @@ class GroupsApp(sdsPluginBase):
     def __init__(self, sds):
         super().__init__(sds)
 
-    def get_info(self,idx,institutions=[],groups=[],start_year=None,end_year=None):
+    def get_info(self,idx,start_year=None,end_year=None):
         initial_year=9999
         final_year = 0
 
@@ -88,7 +88,7 @@ class GroupsApp(sdsPluginBase):
                         elif n["lang"]=="en":
                             name=n["name"]
                     logo=""
-                    for ext in inst["external_ids"]:
+                    for ext in inst["external_urls"]:
                         if ext["source"]=="logo":
                             logo=ext["url"]
                     entry["affiliation"]={"institution":{"name":name,"id":inst_id,"logo":logo}}
@@ -209,8 +209,9 @@ class GroupsApp(sdsPluginBase):
                         if "types" in aff.keys():
                             for typ in aff["types"]:
                                 if typ["type"]=="group":
-                                    group_name=aff["name"]
-                                    group_id=aff["id"]
+                                    if str(aff["id"])==idx:
+                                        group_name=aff["name"]
+                                        group_id=aff["id"]
                                 else:   
                                     inst_name=aff["name"]
                                     inst_id=aff["id"]
@@ -319,7 +320,6 @@ class GroupsApp(sdsPluginBase):
                     {"$match":{"year_published":{"$gte":start_year,"$lte":end_year},"authors.affiliations.id":ObjectId(idx)}}
                 ]
                 
-        #Meter esto en info
         pipeline.extend([
             {"$unwind":"$authors"},
             {"$group":{"_id":"$authors.id","count":{"$sum":1}}},
@@ -421,80 +421,80 @@ class GroupsApp(sdsPluginBase):
             "scholar_lens_wos":0,"scholar_wos_scopus":0,"scholar_lens_scopus":0,"lens_wos_scopus":0,
             "scholar_lens_wos_scopus":0
         }
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":{"$ne":"scopus"}}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":{"$ne":"scopus"}}]
         venn_source["scholar"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":{"$ne":"scopus"}}]
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":"lens"},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":{"$ne":"scopus"}}]
         venn_source["lens"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":{"$ne":"scopus"}}]
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":"wos"},
+                {"updated.source":{"$ne":"scopus"}}]
         venn_source["wos"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":"scopus"}]
         venn_source["scopus"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":{"$ne":"scopus"}}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":"lens"},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":{"$ne":"scopus"}}]
         venn_source["scholar_lens"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":{"$ne":"scopus"}}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":"wos"},
+                {"updated.source":{"$ne":"scopus"}}]
         venn_source["scholar_wos"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":"scopus"}]
         venn_source["scholar_scopus"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":{"$ne":"scopus"}}]
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":"lens"},
+                {"updated.source":"wos"},
+                {"updated.source":{"$ne":"scopus"}}]
         venn_source["lens_wos"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":"lens"},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":"scopus"}]
         venn_source["lens_scopus"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":"wos"},
+                {"updated.source":"scopus"}]
         venn_source["wos_scopus"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":{"$ne":"scopus"}}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":"lens"},
+                {"updated.source":"wos"},
+                {"updated.source":{"$ne":"scopus"}}]
         venn_source["scholar_lens_wos"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":"wos"},
+                {"updated.source":"scopus"}]
         venn_source["scholar_wos_scopus"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":"lens"},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":"scopus"}]
         venn_source["scholar_lens_scopus"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":"lens"},
+                {"updated.source":"wos"},
+                {"updated.source":"scopus"}]
         venn_source["lens_wos_scopus"]=self.colav_db["works"].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":"scopus"}]
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":"lens"},
+                {"updated.source":"wos"},
+                {"updated.source":"scopus"}]
         venn_source["scholar_lens_wos_scopus"]=self.colav_db["works"].count_documents(venn_query)
 
         return venn_source
@@ -576,7 +576,6 @@ class GroupsApp(sdsPluginBase):
             }
 
     def get_production_by_type(self,idx=None,max_results=100,page=1,start_year=None,end_year=None,sort="year",direction="descending",tipo=None):
-
         total = 0
 
         if start_year:
