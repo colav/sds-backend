@@ -90,12 +90,12 @@ class DocumentsApp(sdsPluginBase):
                             if "types" in aff.keys():
                                 for typ in aff["types"]:
                                     if typ["type"]=="group":
-                                        group_name=aff["name"],
+                                        group_name=aff["name"]
                                         group_id=aff["id"]
                                     else:   
                                         inst_name=aff["name"]
                                         inst_id=aff["id"]  
-                author_entry["affiliations"]={"institution":{"name":inst_name,"id":inst_id},
+                author_entry["affiliation"]={"institution":{"name":inst_name,"id":inst_id},
                                               "group":{"name":group_name,"id":group_id}}  
 
                 entry["authors"].append(author_entry)

@@ -16,8 +16,8 @@ class HomeApp(sdsPluginBase):
         self.geojson=json.load(open("sds/etc/bogota.json","r"))
 
     def get_subjects_tree(self):
-        medicine=self.colav_db["subjects"].find_one({"name":"Medicine"},{"works_count":1})
-        psychology=self.colav_db["subjects"].find_one({"name":"Psychology"},{"works_count":1})
+        medicine=self.colav_db["subjects"].find_one({"names.name":"Medicine"},{"products_count":1})
+        psychology=self.colav_db["subjects"].find_one({"names.name":"Psychology"},{"products_count":1})
 
         data={"Medicine":{
             "id":str(medicine["_id"]),
@@ -28,7 +28,7 @@ class HomeApp(sdsPluginBase):
                     },
                     {
                         "text":"Productos",
-                        "value":medicine["works_count"]
+                        "value":medicine["products_count"]
                     }
                 ]
             },
@@ -43,7 +43,7 @@ class HomeApp(sdsPluginBase):
                     },
                     {
                         "text":"Productos",
-                        "value":psychology["works_count"]
+                        "value":psychology["products_count"]
                     }
                 ]
             },
@@ -52,20 +52,27 @@ class HomeApp(sdsPluginBase):
         }
         children=[]
         ids=[]
-        for subject in self.colav_db["subjects"].find({"ancestors.display_name":"Medicine","level":1}):
+        for subject in self.colav_db["subjects"].find({"relations.names.name":"Medicine","level":1}):
             if str(subject["_id"]) in ids:
                 continue
             ids.append(str(subject["_id"]))
+            name=subject["names"][0]["name"]
+            for n in subject["names"]:
+                if n["lang"]=="es":
+                    name=n["name"]
+                    break
+                if n["lang"]=="en":
+                    name=n["name"]
             entry={
                 "id":str(subject["_id"]),
                 "value":{
                     "items":[
                         {
-                            "text":subject["name"]
+                            "text":name
                         },
                         {
                             "text":"Productos",
-                            "value":subject["works_count"]
+                            "value":subject["products_count"]
                         }
                     ]
                 }
@@ -75,20 +82,27 @@ class HomeApp(sdsPluginBase):
 
         children=[]
         ids=[]
-        for subject in self.colav_db["subjects"].find({"ancestors.display_name":"Psychology","level":1}):
+        for subject in self.colav_db["subjects"].find({"relations.names.name":"Psychology","level":1}):
             if str(subject["_id"]) in ids:
                 continue
             ids.append(str(subject["_id"]))
+            name=subject["names"][0]["name"]
+            for n in subject["names"]:
+                if n["lang"]=="es":
+                    name=n["name"]
+                    break
+                if n["lang"]=="en":
+                    name=n["name"]
             entry={
                 "id":str(subject["_id"]),
                 "value":{
                     "items":[
                         {
-                            "text":subject["name"]
+                            "text":name
                         },
                         {
                             "text":"Productos",
-                            "value":subject["works_count"]
+                            "value":subject["products_count"]
                         }
                     ]
                 }
@@ -102,9 +116,9 @@ class HomeApp(sdsPluginBase):
     def get_info(self):
         for idx,loc in enumerate(self.geojson["features"]):
             name=loc["properties"]["loc"]
-            count=self.colav_db["documents"].count_documents({"$text":{"$search":name}})
+            count=self.colav_db["works"].count_documents({"$text":{"$search":name}})
             if count!=0:
-                result=self.colav_db["documents"].aggregate([
+                result=self.colav_db["works"].aggregate([
                     {"$match":{"$text":{"$search":name}}},
                     { "$sort": { "score": { "$meta": "textScore" }, "posts": -1 } },
                     {"$limit":10},
