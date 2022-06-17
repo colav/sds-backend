@@ -95,9 +95,9 @@ class GroupsApp(sdsPluginBase):
             filters={"years":{}}
             for pby in group["products_by_year"]:
                 if pby["year"]<initial_year:
-                    filters["years"]["initial_year"]=pby["year"]
+                    filters["years"]["start_year"]=pby["year"]
                 if pby["year"]>final_year:
-                    filters["years"]["final_year"]=pby["year"]
+                    filters["years"]["end_year"]=pby["year"]
 
             return {"data": entry, "filters": filters }
         else:
