@@ -112,6 +112,11 @@ class AuthorsApp(sdsPluginBase):
                     entry["external_urls"].append({
                         "source":"linkedin",
                         "url":"https://www.linkedin.com/in/"+ext["id"]})
+                if ext["source"]=="minciencias" and not "minciencias" in sources:
+                    sources.append("minciencias")
+                    entry["external_urls"].append({
+                        "source":"minciencias",
+                        "url":"https://scienti.minciencias.gov.co/cvlac/visualizador/generarCurriculoCv.do?cod_rh="+ext["id"]})
 
             filters={"years":{}}
             for pby in author["products_by_year"]:
