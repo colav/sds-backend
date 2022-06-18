@@ -749,9 +749,19 @@ class InstitutionsApp(sdsPluginBase):
             sort=self.request.args.get('sort')
 
             if tipo == None: 
-                production=self.get_production(idx,start_year,end_year,sort,"descending")
+                production=self.get_production(idx=idx,
+                    max_results=max_results,
+                    page=page,
+                    start_year=start_year,
+                    end_year=end_year,
+                    sort=sort)
             else:
-                production=self.get_production_by_type(idx,max_results,page,start_year,end_year,sort,"descending",tipo)
+                production=self.get_production_by_type(idx=idx,
+                    max_results=max_results,
+                    page=page,
+                    start_year=start_year,
+                    end_year=end_year,
+                    sort=sort,tipo=tipo)
 
             if production:
                 response = self.app.response_class(

@@ -490,7 +490,7 @@ class GroupsApp(sdsPluginBase):
 
         return venn_source
 
-    def get_production(self,idx=None,max_results=100,page=1,start_year=None,end_year=None,sort=None,direction="descending"):
+    def get_production(self,idx=None,max_results=100,page=1,start_year=None,end_year=None,sort=None):
         papers=[]
         total=0
         open_access=[]
@@ -528,19 +528,6 @@ class GroupsApp(sdsPluginBase):
             search_dict["year_published"]["$lte"]=end_year
             venn_query["year_published"]["$lte"]=end_year
             oa_query["year_published"]["$lte"]=end_year
-
-        in_list=[]
-        if groups:
-            in_list.extend(groups.split())
-        if institutions:
-            in_list.extend(institutions.split())
-        if len(in_list)>0:
-            def_list=[]
-            for iid in in_list:
-                def_list.append(ObjectId(iid))
-            search_dict["_id"]={"$in":def_list}
-            venn_query["_id"]={"$in":def_list}
-            oa_query["_id"]={"$in":def_list}
         
         cursor=self.colav_db["works"].find(search_dict)
         total=cursor.count()
@@ -714,9 +701,19 @@ class GroupsApp(sdsPluginBase):
 
 
             if tipo == None: 
-                production=self.get_production(idx,start_year,end_year,sort,"descending")
+                production=self.get_production(idx=idx,
+                    max_results=max_results,
+                    page=page,
+                    start_year=start_year,
+                    end_year=end_year,
+                    sort=sort)
             else:
-                production=self.get_production_by_type(idx,max_results,page,start_year,end_year,sort,"descending",tipo)
+                production=self.get_production_by_type(idx=idx,
+                    max_results=max_results,
+                    page=page,
+                    start_year=start_year,
+                    end_year=end_year,
+                    sort=sort,tipo=tipo)
 
             if production:
                 response = self.app.response_class(
