@@ -750,7 +750,6 @@ class InstitutionsApp(sdsPluginBase):
 
             if tipo == None: 
                 production=self.get_production(idx=idx,
-                    page=page,
                     start_year=start_year,
                     end_year=end_year,
                     sort=sort)
