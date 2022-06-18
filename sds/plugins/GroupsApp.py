@@ -92,12 +92,12 @@ class GroupsApp(sdsPluginBase):
                         if ext["source"]=="logo":
                             logo=ext["url"]
                     entry["affiliation"]={"institution":{"name":name,"id":inst_id,"logo":logo}}
+                    
             filters={"years":{}}
-            for pby in group["products_by_year"]:
-                if pby["year"]<initial_year:
-                    filters["years"]["start_year"]=pby["year"]
-                if pby["year"]>final_year:
-                    filters["years"]["end_year"]=pby["year"]
+            for reg in self.colav_db["works"].find({"authors.affiliations.id":ObjectId(idx),"year_published":{"$exists":1}}).sort([("year_published",ASCENDING)]).limit(1):
+                filters["years"]["start_year"]=reg["year_published"]
+            for reg in self.colav_db["works"].find({"authors.affiliations.id":ObjectId(idx),"year_published":{"$exists":1}}).sort([("year_published",DESCENDING)]).limit(1):
+                filters["years"]["end_year"]=reg["year_published"]
 
             return {"data": entry, "filters": filters }
         else:

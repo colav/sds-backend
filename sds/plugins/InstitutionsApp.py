@@ -74,12 +74,12 @@ class InstitutionsApp(sdsPluginBase):
                 sorted_ods=sorted(entry["policies"]["ODS"],key=lambda x:index_list[entry["policies"]["ODS"].index(x)])
                 entry["policies"]["ODS"]=sorted_ods
 
+        
             filters={"years":{}}
-            for pby in institution["products_by_year"]:
-                if pby["year"]<initial_year:
-                    filters["years"]["start_year"]=pby["year"]
-                if pby["year"]>final_year:
-                    filters["years"]["end_year"]=pby["year"]
+            for reg in self.colav_db["works"].find({"authors.affiliations.id":ObjectId(idx),"year_published":{"$exists":1}}).sort([("year_published",ASCENDING)]).limit(1):
+                filters["years"]["start_year"]=reg["year_published"]
+            for reg in self.colav_db["works"].find({"authors.affiliations.id":ObjectId(idx),"year_published":{"$exists":1}}).sort([("year_published",DESCENDING)]).limit(1):
+                filters["years"]["end_year"]=reg["year_published"]
             
             return {"data": entry, "filters": filters }
         else:
