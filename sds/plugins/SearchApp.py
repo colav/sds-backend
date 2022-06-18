@@ -213,7 +213,7 @@ class SearchApp(sdsPluginBase):
             return None
 
     def search_groups(self,keywords="",institutions=None,max_results=100,page=1,sort="citations"):
-        search_dict={"external_ids":{"$ne":[]}}
+        search_dict={"types.type":"group","external_ids":{"$ne":[]}}
         aff_list=[]
         if institutions:
             aff_list.extend([ObjectId(inst) for inst in institutions.split()])
