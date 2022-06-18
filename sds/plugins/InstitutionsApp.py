@@ -535,7 +535,7 @@ class InstitutionsApp(sdsPluginBase):
 
         return venn_source
 
-    def get_production(self,idx=None,start_year=None,end_year=None,sort=None,direction=None):
+    def get_production(self,idx=None,start_year=None,end_year=None,sort=None):
         papers=[]
         total=0
         open_access=[]
@@ -750,7 +750,6 @@ class InstitutionsApp(sdsPluginBase):
 
             if tipo == None: 
                 production=self.get_production(idx=idx,
-                    max_results=max_results,
                     page=page,
                     start_year=start_year,
                     end_year=end_year,
