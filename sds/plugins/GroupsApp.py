@@ -215,7 +215,7 @@ class GroupsApp(sdsPluginBase):
                 entry.append({
                     "id":reg["_id"],
                     "name":reg["full_name"],
-                    "papers_count":reg["products_count"],
+                    "products_count":reg["products_count"],
                     "citations_count":reg["citations_count"],
                     "affiliation":{"institution":{"name":inst_name, 
                                         "id":inst_id},
