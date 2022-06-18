@@ -751,8 +751,8 @@ class GroupsApp(sdsPluginBase):
             idx = self.request.args.get('id')
             max_results=self.request.args.get('max')
             page=self.request.args.get('page')
-
-            authors = self.get_authors(idx)
+            sort=self.request.args.get('sort')
+            authors = self.get_authors(idx=idx,page=page,max_results=max_results,sort=sort)
 
             if authors:
                 response = self.app.response_class(

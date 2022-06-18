@@ -802,8 +802,8 @@ class InstitutionsApp(sdsPluginBase):
             idx = self.request.args.get('id')
             max_results=self.request.args.get('max')
             page=self.request.args.get('page')
- 
-            authors=self.get_authors(idx,page,max_results)
+            sort=self.request.args.get('sort')
+            authors=self.get_authors(idx=idx,page=page,max_results=max_results,sort=sort)
             if authors:
                 response = self.app.response_class(
                 response=self.json.dumps(authors),
@@ -840,8 +840,8 @@ class InstitutionsApp(sdsPluginBase):
             idx = self.request.args.get('id')
             max_results=self.request.args.get('max')
             page=self.request.args.get('page')
-
-            groups=self.get_groups(idx,page,max_results)
+            sort=self.request.args.get('sort')
+            groups=self.get_groups(idx=idx,page=page,max_results=max_results,sort=sort)
             if groups:
                 response = self.app.response_class(
                 response=self.json.dumps(groups),
