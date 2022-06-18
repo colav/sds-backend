@@ -92,7 +92,7 @@ class GroupsApp(sdsPluginBase):
                         if ext["source"]=="logo":
                             logo=ext["url"]
                     entry["affiliation"]={"institution":{"name":name,"id":inst_id,"logo":logo}}
-                    
+
             filters={"years":{}}
             for reg in self.colav_db["works"].find({"authors.affiliations.id":ObjectId(idx),"year_published":{"$exists":1}}).sort([("year_published",ASCENDING)]).limit(1):
                 filters["years"]["start_year"]=reg["year_published"]
@@ -191,6 +191,10 @@ class GroupsApp(sdsPluginBase):
                 cursor.sort([("citations_count",ASCENDING)])
             if sort=="citations" and direction=="descending":
                 cursor.sort([("citations_count",DESCENDING)])
+            if sort=="products" and direction=="ascending":
+                cursor.sort([("products_count",ASCENDING)])
+            if sort=="products" and direction=="descending":
+                cursor.sort([("products_count",DESCENDING)])
 
             cursor=cursor.skip(skip).limit(max_results)
 

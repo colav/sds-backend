@@ -364,6 +364,10 @@ class InstitutionsApp(sdsPluginBase):
                 cursor.sort([("citations_count",ASCENDING)])
             if sort=="citations" and direction=="descending":
                 cursor.sort([("citations_count",DESCENDING)])
+            if sort=="products" and direction=="ascending":
+                cursor.sort([("products_count",ASCENDING)])
+            if sort=="products" and direction=="descending":
+                cursor.sort([("products_count",DESCENDING)])
 
             cursor=cursor.skip(skip).limit(max_results)
 
@@ -428,6 +432,10 @@ class InstitutionsApp(sdsPluginBase):
                 cursor.sort([("citations_count",ASCENDING)])
             if sort=="citations" and direction=="descending":
                 cursor.sort([("citations_count",DESCENDING)])
+            if sort=="products" and direction=="ascending":
+                cursor.sort([("products_count",ASCENDING)])
+            if sort=="products" and direction=="descending":
+                cursor.sort([("products_count",DESCENDING)])
 
             cursor=cursor.skip(skip).limit(max_results)
 
