@@ -46,7 +46,7 @@ class InstitutionsApp(sdsPluginBase):
 
             entry={"id":institution["_id"],
                 "name":name,
-                "external_urls":institution["external_urls"],
+                "external_urls":[ext for ext in institution["external_urls"] if ext["source"]!="logo"],
                 "logo":logo,
                 "policies":{}
             }
@@ -599,7 +599,7 @@ class InstitutionsApp(sdsPluginBase):
             }
 
 
-    def get_production_by_type(self,idx=None,max_results=100,page=1,start_year=None,end_year=None,sort="descending",direction=None,tipo=None):
+    def get_production_by_type(self,idx=None,max_results=100,page=1,start_year=None,end_year=None,sort="year",direction="descending",tipo=None):
         total = 0
 
         if start_year:
