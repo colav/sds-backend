@@ -48,16 +48,24 @@ class SubjectsApp(sdsPluginBase):
         parent={}
         if result["relations"]:
             for sub in result["relations"]:
+                name=sub["names"][0]["name"]
+                for n in sub["names"]:
+                    if n["lang"]=="es":
+                        name=n["name"]
+                        break
+                    if n["lang"]=="en":
+                        name=n["name"]
                 if sub["level"]<result["level"]:
                     if sub["level"]==result["level"]-1:
                         parent={
-                            "title":sub["name"],
+                            "title":name,
                             "id":sub["id"] if "id" in sub.keys() else "",
                             "level":sub["level"]
                         }
                 else:
+
                     entry={
-                        "title":sub["name"],
+                        "title":name,
                         "id":sub["id"] if "id" in sub.keys() else "",
                         "level":sub["level"],
                         "key":"0-"+str(count)
