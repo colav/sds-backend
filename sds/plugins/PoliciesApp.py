@@ -736,7 +736,7 @@ class PoliciesApp(sdsPluginBase):
             entry={
                 "name":name,
                 "id":reg["_id"],
-                "institution":{},
+                "affiliations":{"institution":{}},
                 "plot":[],
                 "citations_count":reg["citations_count"] if "citations_count" in reg.keys() else 0,
                 "products_count":reg["products_count"],
@@ -746,7 +746,7 @@ class PoliciesApp(sdsPluginBase):
                 for relation in reg["relations"]:
                     for typ in relation["types"]:
                         if typ["type"]!="group":
-                            entry["institution"]={
+                            entry["affiliations"]["institution"]={
                                 "name":reg["relations"][0]["name"],
                                 "id":reg["relations"][0]["id"]
                             }
