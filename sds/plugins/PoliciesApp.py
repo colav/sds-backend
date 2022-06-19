@@ -591,9 +591,9 @@ class PoliciesApp(sdsPluginBase):
             cursor.sort([("citations_count",ASCENDING)])
         if sort=="citations" and direction=="descending":
             cursor.sort([("citations_count",DESCENDING)])
-        if sort=="production" and direction=="ascending":
+        if sort=="products" and direction=="ascending":
             cursor.sort([("products_count",ASCENDING)])
-        if sort=="production" and direction=="descending":
+        if sort=="products" and direction=="descending":
             cursor.sort([("products_count",DESCENDING)])
 
         cursor=cursor.skip(skip).limit(max_results)
@@ -717,9 +717,9 @@ class PoliciesApp(sdsPluginBase):
             cursor.sort([("citations_count",ASCENDING)])
         if sort=="citations" and direction=="descending":
             cursor.sort([("citations_count",DESCENDING)])
-        if sort=="production" and direction=="ascending":
+        if sort=="products" and direction=="ascending":
             cursor.sort([("products_count",ASCENDING)])
-        if sort=="production" and direction=="descending":
+        if sort=="products" and direction=="descending":
             cursor.sort([("products_count",DESCENDING)])
 
         cursor=cursor.skip(skip).limit(max_results)
@@ -849,7 +849,7 @@ class PoliciesApp(sdsPluginBase):
 
         if idx:
             sorting_var="citations_count"
-            if sort=="production":
+            if sort=="products":
                 sorting_var="products_count"
             pipeline=[
                 {"$match":{"policies.id":ObjectId(idx)}}
