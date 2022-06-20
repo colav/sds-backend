@@ -226,22 +226,17 @@ class SearchApp(sdsPluginBase):
         cursor=self.colav_db['affiliations'].find(search_dict,{"score":{"$meta":"textScore"}})
         relations = cursor.distinct("relations")
             
-        tmp = []
-        
+        institution_filters = []
+        filter_ids=[]
         for r in relations:
             if "types" in r.keys():
                 for typ in r["types"]:
                     if typ["type"]=="group":
                         continue
-            entry = {"id":str(r["id"]),"name":r["name"]}
-            tmp.append(entry)
-
-        #eliminamos duplicados en la lista de instituciones:
-        institution_filters = []
-        for e in tmp:
-            if e not in institution_filters:
-                institution_filters.append(e)
-
+            if not str(r["id"]) in filter_ids or str(r["id"])!="":
+                entry = {"id":str(r["id"]),"name":r["name"]}
+                institution_filters.append(entry)
+                filter_ids.append(str(r["id"]))
 
         if sort=="citations":
             cursor.sort([("citations_count",DESCENDING)])
