@@ -278,16 +278,22 @@ class CompendiumApp(sdsPluginBase):
 
         search_dict={"types.type":"group"}
 
-        in_list=[]
+        ins_list=[]
+        grp_list=[]
         if groups:
-            in_list.extend(groups.split())
+            grp_list.extend(groups.split())
         if institutions:
-            in_list.extend(institutions.split())
-        if len(in_list)>0:
+            ins_list.extend(institutions.split())
+        if len(ins_list)>0:
             def_list=[]
-            for iid in in_list:
-                def_list.append(ObjectId(iid))
-            search_dict["_id"]={"$in":def_list}
+            for iid in ins_list:
+                def_ins_list.append(ObjectId(iid))
+            search_dict["relations.id"]={"$in":def_ins_list}
+        if len(grp_list)>0:
+            def_grp_list=[]
+            for iid in grp_list:
+                def_grp_list.append(ObjectId(iid))
+            search_dict["_id"]={"$in":def_grp_list}
         var_dict={
             "names":1,"relations":1,
             "products_count":1,"citations_count":1,
@@ -517,16 +523,22 @@ class CompendiumApp(sdsPluginBase):
                 return None
 
         search_dict={"types.type":{"$ne":"group"}}
-        in_list=[]
+        ins_list=[]
+        grp_list=[]
         if groups:
-            in_list.extend(groups.split())
+            grp_list.extend(groups.split())
         if institutions:
-            in_list.extend(institutions.split())
-        if len(in_list)>0:
+            ins_list.extend(institutions.split())
+        if len(ins_list)>0:
             def_list=[]
-            for iid in in_list:
-                def_list.append(ObjectId(iid))
-            search_dict["_id"]={"$in":def_list}
+            for iid in ins_list:
+                def_ins_list.append(ObjectId(iid))
+            search_dict["_id"]={"$in":def_ins_list}
+        if len(grp_list)>0:
+            def_grp_list=[]
+            for iid in grp_list:
+                def_grp_list.append(ObjectId(iid))
+            search_dict["relations.id"]={"$in":def_grp_list}
         var_dict={"names":1,"products_count":1,"citations_count":1,"products_by_year":1,"subjects":1}
         total=self.colav_db["affiliations"].count_documents(search_dict)
         cursor=self.colav_db["affiliations"].find(search_dict,)
