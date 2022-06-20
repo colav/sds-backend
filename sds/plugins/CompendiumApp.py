@@ -285,7 +285,7 @@ class CompendiumApp(sdsPluginBase):
         if institutions:
             ins_list.extend(institutions.split())
         if len(ins_list)>0:
-            def_list=[]
+            def_ins_list=[]
             for iid in ins_list:
                 def_ins_list.append(ObjectId(iid))
             search_dict["relations.id"]={"$in":def_ins_list}
@@ -341,6 +341,13 @@ class CompendiumApp(sdsPluginBase):
                 "plot":[],
                 "subjects":[]
             }
+
+            for inst in reg["relations"]:
+                if str(inst["id"]) in ins_list:
+                    entry["affiliations"]["institution"]={
+                        "name":inst["name"],
+                        "id":inst["id"]
+                    }
 
             for subs in reg["subjects"]:
                 if subs["source"]=="openalex":
@@ -652,7 +659,12 @@ class CompendiumApp(sdsPluginBase):
             sort=self.request.args.get('sort')
             start_year=self.request.args.get('start_year')
             end_year=self.request.args.get('end_year')
-            groups=self.get_groups(start_year=start_year,end_year=end_year,page=page,max_results=max_results,sort=sort)
+            inst=self.request.args.get('institutions')
+            grps=self.request.args.get('groups')
+            groups=self.get_groups(
+                page=page,max_results=max_results,sort=sort,
+                start_year=start_year,end_year=end_year,
+                groups=grps,institutions=inst)
             if groups:    
                 response = self.app.response_class(
                 response=self.json.dumps(groups),
@@ -671,7 +683,12 @@ class CompendiumApp(sdsPluginBase):
             sort=self.request.args.get('sort')
             start_year=self.request.args.get('start_year')
             end_year=self.request.args.get('end_year')
-            institutions=self.get_institutions(page=page,start_year=start_year,end_year=end_year,max_results=max_results,sort=sort)
+            inst=self.request.args.get('institutions')
+            grps=self.request.args.get('groups')
+            institutions=self.get_institutions(
+                page=page,max_results=max_results,sort=sort,
+                start_year=start_year,end_year=end_year,
+                groups=grps,institutions=inst)
             if institutions:    
                 response = self.app.response_class(
                 response=self.json.dumps(institutions),
