@@ -11,31 +11,25 @@ class AuthorsApp(sdsPluginBase):
     def __init__(self, sds):
         super().__init__(sds)
 
-    def get_info(self,idx):
-        initial_year=0
-        final_year=0
+    def get_info(self,idx,institutions=[],groups=[],start_year=None,end_year=None):
+        initial_year=9999
+        final_year = 0
 
-        if idx:
-            result=self.colav_db['documents'].find({"authors.id":ObjectId(idx)},
-                {"year_published":1}).sort([("year_published",ASCENDING)]).limit(1)
-            if result:
-                result=list(result)
-                if len(result)>0:
-                    initial_year=result[0]["year_published"]
-            result=self.colav_db['documents'].find({"authors.id":ObjectId(idx)},
-                {"year_published":1}).sort([("year_published",DESCENDING)]).limit(1)
-            if result:
-                result=list(result)
-                if len(result)>0:
-                    final_year=result[0]["year_published"]
-
-        filters={
-            "start_year":initial_year if initial_year!=0 else "",
-            "end_year":final_year if final_year!=0 else ""
-        }
+        if start_year:
+            try:
+                start_year=int(start_year)
+            except:
+                print("Could not convert start year to int")
+                return None
+        if end_year:
+            try:
+                end_year=int(end_year)
+            except:
+                print("Could not convert end year to int")
+                return None
 
 
-        author = self.colav_db['authors'].find_one({"_id":ObjectId(idx)})
+        author = self.colav_db['person'].find_one({"_id":ObjectId(idx)})
         if author:
             entry={
                 "id":author["_id"],
@@ -43,7 +37,8 @@ class AuthorsApp(sdsPluginBase):
                 "affiliation":{"institution":{"name":"","id":""},"group":{"name":"","id":""}},
                 "external_urls":[],
                 "policies":{},
-                "logo":""
+                "logo":"",
+                "sds":author["sds"] if "sds" in author.keys() else False
             }
             index_list=[]
             if "policies" in author.keys():
@@ -72,20 +67,22 @@ class AuthorsApp(sdsPluginBase):
             if "affiliations" in author.keys():
                 if len(author["affiliations"]):
                     for aff in author["affiliations"]:
-                        if not "type" in aff.keys():
-                            entry["affiliation"]["institution"]["id"]=aff["id"]
-                            entry["affiliation"]["institution"]["name"]=aff["name"]
-                        else:
-                            if aff["type"]=="group":
-                                entry["affiliation"]["group"]["id"]  =aff["id"]
-                                entry["affiliation"]["group"]["name"]=aff["name"]
-            
+                        for typ in aff["types"]:
+                            if typ["type"]=="group":
+                                entry["affiliation"]["group"]={
+                                    "name":aff["name"],
+                                    "id":aff["id"]
+                                }
+                            else:   
+                                entry["affiliation"]["institution"]["name"]=aff["name"]
+                                entry["affiliation"]["institution"]["id"]  =aff["id"]
+        
             if entry["affiliation"]["institution"]["id"] != "":
                     inst_db=self.colav_db["affiliations"].find_one({"_id":ObjectId(entry["affiliation"]["institution"]["id"])})
                     if inst_db:
-                        #entry["country_code"]=inst_db["addresses"][0]["country_code"]
-                        #entry["country"]=inst_db["addresses"][0]["country"]
-                        entry["logo"]=inst_db["logo_url"]
+                        for ext in inst_db["external_urls"]:
+                            if ext["source"]=="logo":
+                                entry["logo"]=ext["url"]
 
             sources=[]
             for ext in author["external_ids"]:
@@ -94,22 +91,38 @@ class AuthorsApp(sdsPluginBase):
                     sources.append("researcherid")
                     entry["external_urls"].append({
                         "source":"researcherid",
-                        "url":"https://publons.com/researcher/"+ext["value"]})
+                        "url":"https://publons.com/researcher/"+ext["id"]})
                 if ext["source"]=="scopus" and not "scopus" in sources:
                     sources.append("scopus")
                     entry["external_urls"].append({
                         "source":"scopus",
-                        "url":"https://www.scopus.com/authid/detail.uri?authorId="+ext["value"]})
+                        "url":"https://www.scopus.com/authid/detail.uri?authorId="+ext["id"]})
                 if ext["source"]=="scholar" and not "scholar" in sources:
                     sources.append("scholar")
                     entry["external_urls"].append({
                         "source":"scholar",
-                        "url":"https://scholar.google.com.co/citations?user="+ext["value"]})
+                        "url":"https://scholar.google.com.co/citations?user="+ext["id"]})
                 if ext["source"]=="orcid" and not "orcid" in sources:
                     sources.append("orcid")
                     entry["external_urls"].append({
                         "source":"orcid",
-                        "url":"https://orcid.org/"+ext["value"]})
+                        "url":"https://orcid.org/"+ext["id"]})
+                if ext["source"]=="linkedin" and not "linkedin" in sources:
+                    sources.append("linkedin")
+                    entry["external_urls"].append({
+                        "source":"linkedin",
+                        "url":"https://www.linkedin.com/in/"+ext["id"]})
+                if ext["source"]=="minciencias" and not "minciencias" in sources:
+                    sources.append("minciencias")
+                    entry["external_urls"].append({
+                        "source":"minciencias",
+                        "url":"https://scienti.minciencias.gov.co/cvlac/visualizador/generarCurriculoCv.do?cod_rh="+ext["id"]})
+
+            filters={"years":{}}
+            for reg in self.colav_db["works"].find({"authors.id":ObjectId(idx),"year_published":{"$exists":1}}).sort([("year_published",ASCENDING)]).limit(1):
+                filters["years"]["start_year"]=reg["year_published"]
+            for reg in self.colav_db["works"].find({"authors.id":ObjectId(idx),"year_published":{"$exists":1}}).sort([("year_published",DESCENDING)]).limit(1):
+                filters["years"]["end_year"]=reg["year_published"]
 
             return {"data": entry, "filters": filters }
         else:
@@ -126,7 +139,6 @@ class AuthorsApp(sdsPluginBase):
             "geo": []
         }
 
-
         if start_year:
             try:
                 start_year=int(start_year)
@@ -140,74 +152,31 @@ class AuthorsApp(sdsPluginBase):
                 print("Could not convert end year to int")
                 return None
 
-
-
-        pipeline=[
-            {"$match":{"authors.id":ObjectId(idx)}}
-        ]
-
-
-        pipeline.extend([
-            {"$match":{"citations":{"$ne":[]}}},
-            {"$unwind":"$citations"},
-            {"$lookup":{
-                "from":"documents",
-                "localField":"citations",
-                "foreignField":"_id",
-                "as":"citers"}
-            },
-            {"$unwind":"$citers"}])
-
-
-        if start_year and not end_year:
-            pipeline.extend([{"$match":{"citers.year_published":{"$gte":start_year}}}])
-        elif end_year and not start_year:
-            pipeline.extend([{"$match":{"citers.year_published":{"$lte":end_year}}}])
-        elif start_year and end_year:
-            pipeline.extend([{"$match":{"citers.year_published":{"$gte":start_year,"$lte":end_year}}}])
-
-        geo_pipeline = pipeline[:] # a clone
-
-
-        pipeline.extend([
-            {"$group":{
-                "_id":"$citers.year_published","count":{"$sum":1}}
-            },
-            {"$sort":{
-                "_id":1
-            }}
-        ])
-
-        geo_pipeline.extend([
-            {"$unwind":"$citers.authors"},
-            {"$project":{"citers.authors.affiliations":1}},
-            {"$unwind":"$citers.authors.affiliations"},
-            {"$lookup":{"from":"affiliations","foreignField":"_id","localField":"citers.authors.affiliations.id","as":"affiliation"}},
-            {"$project":{"affiliation.addresses.country":1,"affiliation.addresses.country_code":1}},
-            {"$unwind":"$affiliation"},{"$group":{"_id":"$affiliation.addresses.country_code","count":{"$sum":1},
-             "country": {"$first": "$affiliation.addresses.country"}}},{"$project": {"country": 1,"_id":1,"count": 1, "log_count": {"$ln": "$count"}}},
-            {"$unwind": "$_id"}, {"$unwind": "$country"}
-        ])
-
-
-        for idx,reg in enumerate(self.colav_db["documents"].aggregate(pipeline)):
-            entry["citations"]+=reg["count"]
-            entry["yearly_citations"].append({"year":reg["_id"],"value":reg["count"]})
-
         countries={}
-        for reg in self.colav_db["documents"].aggregate(geo_pipeline,allowDiskUse=True):
-            if str(reg["_id"])==idx:
-                continue
-            if reg["_id"] and reg["country"]:
-                alpha2=reg["_id"]
-                country_name=reg["country"]
+        years=[]
+        author=self.colav_db["person"].find_one({"_id":ObjectId(idx)})
+        if author:
+            if not "yearly_geo_citations" in author.keys():
+                return {"error":"No information to process"}
+            for year,alpha2,country,citations in author["yearly_geo_citations"]:
+                if year<start_year or year>end_year:
+                    continue
+                entry["citations"]+=citations
+                if year in years:
+                    entry["yearly_citations"][years.index(year)]["value"]+=citations
+                else:
+                    entry["yearly_citatios"].append({"year":year,"value":citations})
+                    years.append(year)
                 if alpha2 in countries.keys():
-                    countries[alpha2]["count"]+=reg["count"]
+                    countries[alpha2]["count"]+=citations
                 else:
                     countries[alpha2]={
-                        "count":reg["count"],
+                        "count":citations,
                         "name":country_name
                     }
+        else:
+            return {"error":"No information to process"}
+
         for key,val in countries.items():
             countries[key]["log_count"]=log(val["count"])
         for idx,feat in enumerate(geojson["features"]):
@@ -246,7 +215,7 @@ class AuthorsApp(sdsPluginBase):
                 print("Could not convert end year to int")
                 return None
         if idx:
-            result=self.colav_db["authors"].find_one({"_id":ObjectId(idx)})
+            result=self.colav_db["person"].find_one({"_id":ObjectId(idx)})
         else:
             return None
 
@@ -328,7 +297,7 @@ class AuthorsApp(sdsPluginBase):
             "coauthors_network":{}
         }
 
-        for reg in self.colav_db["documents"].aggregate(pipeline):
+        for reg in self.colav_db["works"].aggregate(pipeline):
             affiliation_id = ""
             affiliation_name = ""
             group_id=""
@@ -337,13 +306,24 @@ class AuthorsApp(sdsPluginBase):
                 continue
             if "affiliations" in reg["author"].keys():
                 for aff in reg["author"]["affiliations"]:
-                    if "type" in aff.keys():
-                        if aff["type"]=="group":
-                            group_id=aff["id"]
-                            group_name=aff["name"]
-                    else:
-                        affiliation_id = aff["id"]
-                        affiliation_name = aff["name"]
+                    if "types" in aff.keys():
+                        for typ in aff["types"]:
+                            if typ["type"]=="group":
+                                if groups:
+                                    if aff["id"] in aff_list:
+                                        group_name=aff["name"],
+                                        group_id=aff["id"]
+                                else:
+                                    group_name=aff["name"]
+                                    group_id=aff["id"]
+                            else:
+                                if institutions:
+                                    if aff["id"] in aff_list:
+                                        inst_name=aff["name"]
+                                        inst_id=aff["id"]
+                                else:    
+                                    inst_name=aff["name"]
+                                    inst_id=aff["id"]
 
             entry["coauthors"].append(
                 {"id":reg["_id"],"name":reg["author"]["full_name"],
@@ -366,7 +346,7 @@ class AuthorsApp(sdsPluginBase):
             {"$unwind":"$affiliation"},
             {"$unwind":"$affiliation.addresses"}
         ])
-        for reg in self.colav_db["documents"].aggregate(pipeline,allowDiskUse=True):
+        for reg in self.colav_db["works"].aggregate(pipeline,allowDiskUse=True):
             if str(reg["_id"])==idx:
                 continue
             if not "country_code" in reg["affiliation"]["addresses"].keys():
@@ -405,85 +385,85 @@ class AuthorsApp(sdsPluginBase):
             "scholar_lens_wos":0,"scholar_wos_scopus":0,"scholar_lens_scopus":0,"lens_wos_scopus":0,
             "scholar_lens_wos_scopus":0
         }
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":{"$ne":"scopus"}}]
-        venn_source["scholar"]=self.colav_db['documents'].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":{"$ne":"scopus"}}]
-        venn_source["lens"]=self.colav_db['documents'].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":{"$ne":"scopus"}}]
-        venn_source["wos"]=self.colav_db['documents'].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":"scopus"}]
-        venn_source["scopus"]=self.colav_db['documents'].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":{"$ne":"scopus"}}]
-        venn_source["scholar_lens"]=self.colav_db['documents'].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":{"$ne":"scopus"}}]
-        venn_source["scholar_wos"]=self.colav_db['documents'].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":"scopus"}]
-        venn_source["scholar_scopus"]=self.colav_db['documents'].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":{"$ne":"scopus"}}]
-        venn_source["lens_wos"]=self.colav_db['documents'].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":"scopus"}]
-        venn_source["lens_scopus"]=self.colav_db['documents'].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":"scopus"}]
-        venn_source["wos_scopus"]=self.colav_db['documents'].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":{"$ne":"scopus"}}]
-        venn_source["scholar_lens_wos"]=self.colav_db['documents'].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":{"$ne":"lens"}},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":"scopus"}]
-        venn_source["scholar_wos_scopus"]=self.colav_db['documents'].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":{"$ne":"wos"}},
-                {"source_checked.source":"scopus"}]
-        venn_source["scholar_lens_scopus"]=self.colav_db['documents'].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":{"$ne":"scholar"}},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":"scopus"}]
-        venn_source["lens_wos_scopus"]=self.colav_db['documents'].count_documents(venn_query)
-        venn_query["$and"]=[{"source_checked.source":"scholar"},
-                {"source_checked.source":"lens"},
-                {"source_checked.source":"wos"},
-                {"source_checked.source":"scopus"}]
-        venn_source["scholar_lens_wos_scopus"]=self.colav_db['documents'].count_documents(venn_query)
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":{"$ne":"scopus"}}]
+        venn_source["scholar"]=self.colav_db["works"].count_documents(venn_query)
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":"lens"},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":{"$ne":"scopus"}}]
+        venn_source["lens"]=self.colav_db["works"].count_documents(venn_query)
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":"wos"},
+                {"updated.source":{"$ne":"scopus"}}]
+        venn_source["wos"]=self.colav_db["works"].count_documents(venn_query)
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":"scopus"}]
+        venn_source["scopus"]=self.colav_db["works"].count_documents(venn_query)
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":"lens"},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":{"$ne":"scopus"}}]
+        venn_source["scholar_lens"]=self.colav_db["works"].count_documents(venn_query)
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":"wos"},
+                {"updated.source":{"$ne":"scopus"}}]
+        venn_source["scholar_wos"]=self.colav_db["works"].count_documents(venn_query)
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":"scopus"}]
+        venn_source["scholar_scopus"]=self.colav_db["works"].count_documents(venn_query)
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":"lens"},
+                {"updated.source":"wos"},
+                {"updated.source":{"$ne":"scopus"}}]
+        venn_source["lens_wos"]=self.colav_db["works"].count_documents(venn_query)
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":"lens"},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":"scopus"}]
+        venn_source["lens_scopus"]=self.colav_db["works"].count_documents(venn_query)
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":"wos"},
+                {"updated.source":"scopus"}]
+        venn_source["wos_scopus"]=self.colav_db["works"].count_documents(venn_query)
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":"lens"},
+                {"updated.source":"wos"},
+                {"updated.source":{"$ne":"scopus"}}]
+        venn_source["scholar_lens_wos"]=self.colav_db["works"].count_documents(venn_query)
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":{"$ne":"lens"}},
+                {"updated.source":"wos"},
+                {"updated.source":"scopus"}]
+        venn_source["scholar_wos_scopus"]=self.colav_db["works"].count_documents(venn_query)
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":"lens"},
+                {"updated.source":{"$ne":"wos"}},
+                {"updated.source":"scopus"}]
+        venn_source["scholar_lens_scopus"]=self.colav_db["works"].count_documents(venn_query)
+        venn_query["$and"]=[{"updated.source":{"$ne":"scholar"}},
+                {"updated.source":"lens"},
+                {"updated.source":"wos"},
+                {"updated.source":"scopus"}]
+        venn_source["lens_wos_scopus"]=self.colav_db["works"].count_documents(venn_query)
+        venn_query["$and"]=[{"updated.source":"scholar"},
+                {"updated.source":"lens"},
+                {"updated.source":"wos"},
+                {"updated.source":"scopus"}]
+        venn_source["scholar_lens_wos_scopus"]=self.colav_db["works"].count_documents(venn_query)
 
         return venn_source
 
-    def get_production(self,idx=None,max_results=100,page=1,start_year=None,end_year=None,sort=None,direction=None):
+    def get_production(self,idx=None,max_results=100,institutions=None,groups=None,page=1,start_year=None,end_year=None,sort=None,direction="descending"):
         papers=[]
         total=0
         open_access=[]
@@ -500,151 +480,45 @@ class AuthorsApp(sdsPluginBase):
             except:
                 print("Could not convert end year to int")
                 return None
-        
+                
+
+        search_dict={}
+        venn_query={}
+        oa_query={}
+
         if idx:
-            if start_year and not end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year},"authors.id":ObjectId(idx)})
-                venn_query={"year_published":{"$gte":start_year},"authors.id":ObjectId(idx)}
-                val=self.colav_db['documents'].count_documents({"open_access_status":"green","year_published":{"$gte":start_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","year_published":{"$gte":start_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"gold"  ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","year_published":{"$gte":start_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"bronze","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","year_published":{"$gte":start_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"closed","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","year_published":{"$gte":start_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"hybrid","value":val})
-            elif end_year and not start_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$lte":end_year},"authors.id":ObjectId(idx)})
-                venn_query={"year_published":{"$lte":end_year},"authors.id":ObjectId(idx)}
-                val=self.colav_db['documents'].count_documents({"open_access_status":"green","year_published":{"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","year_published":{"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"gold"  ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","year_published":{"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"bronze","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","year_published":{"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"closed","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","year_published":{"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"hybrid","value":val})
-            elif start_year and end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)})
-                venn_query={"year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)}
-                val=self.colav_db['documents'].count_documents({"open_access_status":"green","year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"gold"  ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"bronze","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"closed","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"hybrid","value":val})
-            else:
-                cursor=self.colav_db['documents'].find({"authors.id":ObjectId(idx)})
-                venn_query={"authors.id":ObjectId(idx)}
-                val=self.colav_db['documents'].count_documents({"open_access_status":"green","authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"green" ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"gold","authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"gold"  ,"value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"bronze","authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"bronze","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"closed","authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"closed","value":val})
-                val=self.colav_db['documents'].count_documents({"open_access_status":"hybrid","authors.id":ObjectId(idx)})
-                if val!=0:
-                    open_access.append({"type":"hybrid","value":val})
-        else:
-            cursor=self.colav_db['documents'].find() 
-            venn_query={}
-        total=cursor.count()
-        if not page:
-            page=1
-        else:
-            try:
-                page=int(page)
-            except:
-                print("Could not convert end page to int")
-                return None
-        if not max_results:
-            max_results=100
-        else:
-            try:
-                max_results=int(max_results)
-            except:
-                print("Could not convert end max to int")
-                return None
+            search_dict={"authors.id":ObjectId(idx)}
+            venn_query={"authors.id":ObjectId(idx)}
+            oa_query={"authors.id":ObjectId(idx)}
+                
+        if start_year or end_year:
+            search_dict["year_published"]={}
+            venn_query["year_published"]={}
+            oa_query["year_published"]={}
+        if start_year:
+            search_dict["year_published"]["$gte"]=start_year
+            venn_query["year_published"]["$gte"]=start_year
+            oa_query["year_published"]["$gte"]=start_year
+        if end_year:
+            search_dict["year_published"]["$lte"]=end_year
+            venn_query["year_published"]["$lte"]=end_year
+            oa_query["year_published"]["$lte"]=end_year
         
+        cursor=self.colav_db["works"].find(search_dict)
+        total=cursor.count()
 
-        if sort=="citations" and direction=="ascending":
-            cursor.sort([("citations_count",ASCENDING)])
-        if sort=="citations" and direction=="descending":
-            cursor.sort([("citations_count",DESCENDING)])
-        if sort=="year" and direction=="ascending":
-            cursor.sort([("year_published",ASCENDING)])
-        if sort=="year" and direction=="descending":
-            cursor.sort([("year_published",DESCENDING)])
-
-        cursor=cursor.skip(max_results*(page-1)).limit(max_results)
-
-        for paper in cursor:
-            entry={
-                "id":paper["_id"],
-                "title":paper["titles"][0]["title"],
-                "citations_count":paper["citations_count"],
-                "year_published":paper["year_published"],
-                "open_access_status":paper["open_access_status"]
-            }
-
-            source=self.colav_db["sources"].find_one({"_id":paper["source"]["id"]})
-            if source:
-                entry["source"]={"name":source["title"],"id":str(source["_id"])}
-            authors=[]
-            for author in paper["authors"]:
-                au_entry={}
-                author_db=self.colav_db["authors"].find_one({"_id":author["id"]})
-                if author_db:
-                    au_entry={"full_name":author_db["full_name"],"id":author_db["_id"]}
-                affiliations=[]
-                for aff in author["affiliations"]:
-                    aff_entry={}
-                    group_entry={}
-                    if not "id" in aff.keys():
-                        continue
-                    if "type" in aff.keys():
-                        if aff["type"]=="group":
-                            group_entry= ({"name":aff["name"],"id":aff["id"]})
-                            affiliations.append(group_entry)
-                    else:
-                        aff_entry={"name":aff["name"],"id":aff["id"]}
-
-                    affiliations.append(aff_entry)
-                au_entry["affiliations"]=affiliations
-                authors.append(au_entry)
-            entry["authors"]=authors
-            papers.append(entry)
-
-        tipos = self.colav_db['documents'].distinct("publication_type.type",{"authors.id":ObjectId(idx)})
+        for oa in ["green","gold","bronze","closed","hybrid"]:
+            oa_query["bibliographic_info.open_access_status"]=oa
+            val=self.colav_db["works"].count_documents(oa_query)
+            if val!=0:
+                open_access.append({"type":oa ,"value":val})
+        
+        types = self.colav_db['works'].distinct("types",{"authors.id":ObjectId(idx)})
+        tipos=[]
+        for tipo in types:
+            if tipo["source"]=="minciencias":
+                if not tipo["type"] in tipos:
+                    tipos.append(tipo["type"])
 
         return {
             "open_access":open_access,
@@ -652,7 +526,8 @@ class AuthorsApp(sdsPluginBase):
             "types":tipos
             }
 
-    def get_production_by_type(self,idx=None,max_results=100,page=1,start_year=None,end_year=None,sort=None,direction=None,tipo=None):
+    def get_production_by_type(self,idx=None,max_results=100,page=1,
+            groups=None,institutions=None,start_year=None,end_year=None,sort="year",direction="descending",tipo=None):
         total = 0
 
         if start_year:
@@ -668,24 +543,21 @@ class AuthorsApp(sdsPluginBase):
                 print("Could not convert end year to int")
                 return None
 
+        search_dict={"types.type":tipo}
+
         if idx:
-
-            if start_year and not end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year},"authors.id":ObjectId(idx),
-                    "publication_type.type":tipo})
-
-            elif end_year and not start_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$lte":end_year},"authors.id":ObjectId(idx),
-                    "publication_type.type":tipo})
-
-            elif start_year and end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year,"$lte":end_year},
-                    "authors.id":ObjectId(idx), "publication_type.type":tipo})
-
-            else:
-                cursor=self.colav_db['documents'].find({"authors.id":ObjectId(idx),"publication_type.type":tipo})
+            search_dict["authors.id"]=ObjectId(idx)
+                
+        if start_year or end_year:
+            search_dict["year_published"]={}
+        if start_year:
+            search_dict["year_published"]["$gte"]=start_year
+        if end_year:
+            search_dict["year_published"]["$lte"]=end_year
         
+        cursor=self.colav_db["works"].find(search_dict)
         total=cursor.count()
+
         if not page:
             page=1
         else:
@@ -714,205 +586,78 @@ class AuthorsApp(sdsPluginBase):
 
         cursor=cursor.skip(max_results*(page-1)).limit(max_results)
 
-        entry=[]
+        if cursor:
+            paper_list=[]
+            for paper in cursor:
+                entry={
+                    "id":paper["_id"],
+                    "title":paper["titles"][0]["title"],
+                    "authors":[],
+                    "source":"",
+                    "open_access_status":paper["bibliographic_info"]["open_access_status"] if "open_access_status" in paper["bibliographic_info"] else "",
+                    "year_published":paper["year_published"],
+                    "citations_count":paper["citations_count"] if "citations_count" in paper.keys() else 0,
+                    "subjects":[]
+                }
 
-        for doc in cursor:
-            authors=[]
-            for author in doc["authors"]:
-                au_entry={"full_name":author["full_name"],"id":author["id"],"affiliation":{}}
-                for aff in author["affiliations"]:
-                    if "type" in aff.keys():
-                        if aff["type"]=="group":
-                            au_entry["affiliation"]["group"]={"name":aff["name"],"id":aff["id"]}        
-                    else:
-                        au_entry["affiliation"]["institution"]={"name":aff["name"],"id":aff["id"]}
-                authors.append(au_entry)
+                for subs in paper["subjects"]:
+                    if subs["source"]=="openalex":
+                        entry["subjects"]=subs["subjects"]
+                        break
 
-            try:
-                if doc["publication_type"]["source"]=="lens":
+                if "source" in paper.keys():
+                    source=self.colav_db["sources"].find_one({"_id":paper["source"]["id"]})
+                    if source:
+                        entry["source"]={"name":source["title"],"id":source["_id"]}
+                
+                authors=[]
+                for author in paper["authors"]:
+                    author_entry={
+                        "id":author["id"],
+                        "full_name":author["full_name"],
+                        "affiliation": {
+                            "institution":{"name":"","id":""}
+                        }
+                    }
+                    if "affiliations" in author.keys():
+                        if len(author["affiliations"])>0:
+                            for aff in author["affiliations"]:
+                                if "types" in aff.keys():
+                                    for typ in aff["types"]:
+                                        if typ["type"]=="group":
+                                            if groups:
+                                                if aff["id"] in aff_list:
+                                                    author_entry["affiliation"]["group"]={
+                                                        "name":aff["name"],
+                                                        "id":aff["id"]
+                                                    }
+                                            else:
+                                                author_entry["affiliation"]["group"]={
+                                                    "name":aff["name"],
+                                                    "id":aff["id"]
+                                                }
+                                        else:
+                                            if institutions:
+                                                if aff["id"] in aff_list:
+                                                    author_entry["affiliation"]["institution"]["name"]=aff["name"]
+                                                    author_entry["affiliation"]["institution"]["id"]  =aff["id"]
+                                            else:    
+                                                author_entry["affiliation"]["institution"]["name"]=aff["name"]
+                                                author_entry["affiliation"]["institution"]["id"]  =aff["id"]
+                    authors.append(author_entry)
 
-                    source=self.colav_db["sources"].find_one({"_id":doc["source"]["id"]})
+                entry["authors"]=authors
 
-                    entry.append({
-                    "id":doc["_id"],
-                    "title":doc["titles"][0]["title"],
-                    "citations_count":doc["citations_count"],
-                    "year_published":doc["year_published"],
-                    "open_access_status":doc["open_access_status"],
-                    "source":{"name":source["title"],"id":str(source["_id"])},
-                    "authors":authors,
-                    "subjects":[{"name":reg["name"],"id":reg["id"]}for reg in doc["subjects"]] if "subjects" in doc.keys() else  []
-                    })
+                paper_list.append(entry)
 
-            except:
-                continue
-        return {"total":total,"page":page,"count":len(entry),"data":entry}
+            return {"data":paper_list,
+                    "count":len(paper_list),
+                    "page":page,
+                    "total_results":total
+                }
+        else:
+            return None
     
-    def get_csv(self,idx=None,start_year=None,end_year=None,sort=None,direction=None):
-        papers=[]
-        
-        if start_year:
-            try:
-                start_year=int(start_year)
-            except:
-                print("Could not convert start year to int")
-                return None
-        if end_year:
-            try:
-                end_year=int(end_year)
-            except:
-                print("Could not convert end year to int")
-                return None
-        if idx:
-            if start_year and not end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year},"authors.id":ObjectId(idx)})
-            elif end_year and not start_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$lte":end_year},"authors.id":ObjectId(idx)})
-            elif start_year and end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)})
-            else:
-                cursor=self.colav_db['documents'].find({"authors.id":ObjectId(idx)})
-        else:
-            cursor=self.colav_db['documents'].find()
-
-        if sort=="citations" and direction=="ascending":
-            cursor.sort({"citations_count":pymongo.ASCENDING})
-        if sort=="citations" and direction=="descending":
-            cursor.sort({"citations_count":pymongo.DESCENDING})
-        if sort=="year" and direction=="ascending":
-            cursor.sort({"year_published":pymongo.ASCENDING})
-        if sort=="year" and direction=="descending":
-            cursor.sort({"year_published":pymongo.DESCENDING})
-
-        csv_text="id\tpublication_type\ttitle\tabstract\tvolume\tissue\tstart_page\tend_page\tyear_published\tdate_published\t"
-        csv_text+="funding_organization\tis_open_access\topen_access_status\tdoi\tjournal_name\tpublisher\tissn\t"
-        csv_text+="author_id\tauthor_name\taffiliation_id\taffiliation_name\taffiliation_country\n"
-
-        for paper in cursor:
-            csv_text+=str(paper["_id"])
-            csv_text+="\t"+paper["publication_type"]
-            csv_text+="\t"+paper["titles"][0]["title"].replace("\t","").replace("\n","").replace("\r","")
-            csv_text+="\t"+paper["abstract"].replace("\t","").replace("\n","").replace("\r","")
-            csv_text+="\t"+str(paper["volume"])
-            csv_text+="\t"+str(paper["issue"])
-            csv_text+="\t"+str(paper["start_page"])
-            csv_text+="\t"+str(paper["end_page"])
-            csv_text+="\t"+str(paper["year_published"])
-            try:
-                ts=int(paper["date_published"])
-                csv_text+="\t"+date.fromtimestamp(ts).strftime("%d-%m-%Y")
-            except:
-                csv_text+="\t"+""
-            csv_text+="\t"+paper["funding_organization"].replace("\t","").replace("\n","").replace("\r","")
-            csv_text+="\t"+str(paper["is_open_access"])
-            csv_text+="\t"+paper["open_access_status"]
-            doi_entry=""
-            for ext in paper["external_ids"]:
-                if ext["source"]=="doi":
-                    doi_entry=ext["id"]
-            csv_text+="\t"+str(doi_entry)
-
-            source=self.colav_db["sources"].find_one({"_id":paper["source"]["id"]})
-            if source:
-                csv_text+="\t"+source["title"].replace("\t","").replace("\n","").replace("\r","")
-                csv_text+="\t"+source["publisher"]
-                serial_entry=""
-                for serial in source["serials"]:
-                    if serial["type"]=="issn" or serial["type"]=="eissn" or serial["type"]=="pissn":
-                        serial_entry=serial["value"]
-                csv_text+="\t"+serial_entry
-
-            csv_text+="\t"+str(paper["authors"][0]["id"])
-            author_db=self.colav_db["authors"].find_one({"_id":paper["authors"][0]["id"]})
-            if author_db:
-                csv_text+="\t"+author_db["full_name"]
-            else:
-                csv_text+="\t"+""
-            aff_db=""
-            if "affiliations" in paper["authors"][0].keys():
-                if len(paper["authors"][0]["affiliations"])>0:
-                    csv_text+="\t"+str(paper["authors"][0]["affiliations"][0]["id"])
-                    aff_db=self.colav_db["affiliations"].find_one({"_id":paper["authors"][0]["affiliations"][0]["id"]})
-            if aff_db:
-                csv_text+="\t"+aff_db["name"]
-                country_entry=""
-                if "addresses" in aff_db.keys():
-                    if len(aff_db["addresses"])>0:
-                        country_entry=aff_db["addresses"][0]["country"]
-                csv_text+="\t"+country_entry
-            else:
-                csv_text+="\t"+""
-                csv_text+="\t"+""
-                csv_text+="\t"+""
-            csv_text+="\n"
-        return csv_text
-
-    def get_json(self,idx=None,start_year=None,end_year=None,sort=None,direction=None):
-        papers=[]
-        
-        if start_year:
-            try:
-                start_year=int(start_year)
-            except:
-                print("Could not convert start year to int")
-                return None
-        if end_year:
-            try:
-                end_year=int(end_year)
-            except:
-                print("Could not convert end year to int")
-                return None
-        if idx:
-            if start_year and not end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year},"authors.id":ObjectId(idx)})
-            elif end_year and not start_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$lte":end_year},"authors.id":ObjectId(idx)})
-            elif start_year and end_year:
-                cursor=self.colav_db['documents'].find({"year_published":{"$gte":start_year,"$lte":end_year},"authors.id":ObjectId(idx)})
-            else:
-                cursor=self.colav_db['documents'].find({"authors.id":ObjectId(idx)})
-        else:
-            cursor=self.colav_db['documents'].find()
-
-        if sort=="citations" and direction=="ascending":
-            cursor.sort({"citations_count":pymongo.ASCENDING})
-        if sort=="citations" and direction=="descending":
-            cursor.sort({"citations_count":pymongo.DESCENDING})
-        if sort=="year" and direction=="ascending":
-            cursor.sort({"year_published":pymongo.ASCENDING})
-        if sort=="year" and direction=="descending":
-            cursor.sort({"year_published":pymongo.DESCENDING})
-
-        for paper in cursor:
-            entry=paper
-            source=self.colav_db["sources"].find_one({"_id":paper["source"]["id"]})
-            if source:
-                entry["source"]=source
-            authors=[]
-            for author in paper["authors"]:
-                au_entry=author
-                author_db=self.colav_db["authors"].find_one({"_id":author["id"]})
-                if author_db:
-                    au_entry=author_db
-                affiliations=[]
-                for aff in author["affiliations"]:
-                    aff_entry=aff
-                    aff_db=self.colav_db["affiliations"].find_one({"_id":aff["id"]})
-                    if aff_db:
-                        aff_entry=aff_db
-                    branches=[]
-                    if "branches" in aff.keys():
-                        for branch in aff["branches"]:
-                            branch_db=self.colav_db["branches"].find_one({"_id":branch["id"]}) if "id" in branch.keys() else ""
-                            if branch_db:
-                                branches.append(branch_db)
-                    aff_entry["branches"]=branches
-                    affiliations.append(aff_entry)
-                au_entry["affiliations"]=affiliations
-                authors.append(au_entry)
-            entry["authors"]=authors
-            papers.append(entry)
-        return str(papers)
 
     @endpoint('/app/authors', methods=['GET'])
     def app_authors(self):
@@ -921,7 +666,9 @@ class AuthorsApp(sdsPluginBase):
 
         if data=="info":
             idx = self.request.args.get('id')
-            info = self.get_info(idx)
+            start_year=self.request.args.get('start_year')
+            end_year=self.request.args.get('end_year')
+            info = self.get_info(idx,start_year=start_year,end_year=end_year)
             if info:    
                 response = self.app.response_class(
                 response=self.json.dumps(info),
@@ -944,9 +691,19 @@ class AuthorsApp(sdsPluginBase):
             tipo = self.request.args.get('type')
 
             if tipo == None: 
-                production=self.get_production(idx,max_results,page,start_year,end_year,sort,"descending")
+                production=self.get_production(idx=idx,
+                    max_results=max_results,
+                    page=page,
+                    start_year=start_year,
+                    end_year=end_year,
+                    sort=sort)
             else:
-                production=self.get_production_by_type(idx,max_results,page,start_year,end_year,sort,"descending",tipo)
+                production=self.get_production_by_type(idx=idx,
+                    max_results=max_results,
+                    page=page,
+                    start_year=start_year,
+                    end_year=end_year,
+                    sort=sort,tipo=tipo)
 
             if production:
                 response = self.app.response_class(
@@ -1005,46 +762,6 @@ class AuthorsApp(sdsPluginBase):
                 response=self.json.dumps(subjects),
                 status=200,
                 mimetype='application/json'
-                )
-            else:
-                response = self.app.response_class(
-                response=self.json.dumps({"status":"Request returned empty"}),
-                status=204,
-                mimetype='application/json'
-                )
-        elif data=="csv":
-            idx = self.request.args.get('id')
-            start_year=self.request.args.get('start_year')
-            end_year=self.request.args.get('end_year')
-            sort=self.request.args.get('sort')
-            production_csv=self.get_csv(idx,start_year,end_year,sort,"descending")
-            if production_csv:
-                response = self.app.response_class(
-                response=production_csv,
-                status=200,
-                mimetype='text/csv',
-                headers={"Content-disposition":
-                 "attachment; filename=authors.csv"}
-                )
-            else:
-                response = self.app.response_class(
-                response=self.json.dumps({"status":"Request returned empty"}),
-                status=204,
-                mimetype='application/json'
-                )
-        elif data=="json":
-            idx = self.request.args.get('id')
-            start_year=self.request.args.get('start_year')
-            end_year=self.request.args.get('end_year')
-            sort=self.request.args.get('sort')
-            production_json=self.get_json(idx,start_year,end_year,sort,"descending")
-            if production_json:
-                response = self.app.response_class(
-                response=production_json,
-                status=200,
-                mimetype='text/plain',
-                headers={"Content-disposition":
-                 "attachment; filename=authors.json"}
                 )
             else:
                 response = self.app.response_class(

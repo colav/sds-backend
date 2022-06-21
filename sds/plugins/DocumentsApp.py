@@ -8,23 +8,32 @@ class DocumentsApp(sdsPluginBase):
         super().__init__(sds)
 
     def get_info(self,idx):
-        document = self.colav_db['documents'].find_one({"_id":ObjectId(idx)})
+        document = self.colav_db['works'].find_one({"_id":ObjectId(idx)})
         if document:
             entry={"id":document["_id"],
                 "title":document["titles"][0]["title"],
                 "abstract":document["abstract"],
                 "source":{},
                 "year_published":document["year_published"],
-                "language":document["languages"][0] if len(document["languages"])>0 else "",
-                "volume":document["volume"],
-                "issue":document["issue"],
+                "language":"",
+                "volume":"",
+                "issue": "",
                 "authors":[],
                 "policies":{},
-                "open_access_status":document["open_access_status"],
-                "citations_count":document["citations_count"],
+                "open_access_status": "",
+                "citations_count":document["citations_count"] if "citations_count" in document.keys() else "",
                 "external_ids":[],
-                "external_urls":document["urls"]
+                "external_urls":document["external_urls"]
             }
+            if "language" in document.keys():
+                entry["language"]=document["languages"][0] if len(document["languages"])>0 else ""
+            if "bibliographic_info" in document.keys():
+                if "volume" in document["bibliographic_info"].keys():
+                    entry["volume"]=document["bibliographic_info"]["volume"]
+                if "issue" in document["bibliographic_info"].keys():
+                    entry["issue"]=document["bibliographic_info"]["issue"]
+                if "open_access_status" in document["bibliographic_info"].keys():
+                    entry["open_access_status"]=document["bibliographic_info"]["open_access_status"]
             index_list=[]
             if "policies" in document.keys():
                 for policy in document["policies"]:
@@ -49,32 +58,45 @@ class DocumentsApp(sdsPluginBase):
                 sorted_ods=sorted(entry["policies"]["ODS"],key=lambda x:index_list[entry["policies"]["ODS"].index(x)])
                 entry["policies"]["ODS"]=sorted_ods
 
-            source=self.colav_db["sources"].find_one({"_id":document["source"]["id"]})
-            entry_source={
-                "name":source["title"],
-                "serials":{}
-            }
-            for serial in source["serials"]:
-                if not serial["type"] in entry_source.keys():
-                    entry_source["serials"][serial["type"]]=serial["value"]
-            entry["source"]=entry_source
+            if "source" in document.keys():
+                source=self.colav_db["sources"].find_one({"_id":document["source"]["id"]})
+                entry_source={
+                    "name":source["title"],
+                    "serials":{}
+                }
+                for serial in source["serials"]:
+                    if not serial["type"] in entry_source.keys():
+                        entry_source["serials"][serial["type"]]=serial["value"]
+                entry["source"]=entry_source
 
             for author in document["authors"]:
-                author_entry={
-                    "corresponding":author["corresponding"]
-                }
-                auth_reg=self.colav_db["authors"].find_one({"_id":author["id"]})
-                author_entry["name"]=auth_reg["full_name"]
-                author_entry["id"]=auth_reg["_id"]
+                author_entry={}
+                if len(document["authors"])==1:
+                    author_entry["corresponding"]=True
+                else:
+                    for typ in author["types"]:
+                        if typ["type"]=="corresponding":
+                            author_entry["corresponding"]=True
+                author_entry["name"]=author["full_name"]
+                author_entry["id"]=author["id"]
                 author_entry["affiliation"]={}
+                group_name = ""
+                group_id = ""
+                inst_name=""
+                inst_id=""
                 if "affiliations" in author.keys():
                     if len(author["affiliations"])>0:
-                        author_entry["affiliation"]={
-                            "institution":{
-                                "name":author["affiliations"][0]["name"],
-                                "id":author["affiliations"][0]["id"]
-                            }
-                        }    
+                        for aff in author["affiliations"]:
+                            if "types" in aff.keys():
+                                for typ in aff["types"]:
+                                    if typ["type"]=="group":
+                                        group_name=aff["name"]
+                                        group_id=aff["id"]
+                                    else:   
+                                        inst_name=aff["name"]
+                                        inst_id=aff["id"]  
+                author_entry["affiliation"]={"institution":{"name":inst_name,"id":inst_id},
+                                              "group":{"name":group_name,"id":group_id}}  
 
                 entry["authors"].append(author_entry)
             
@@ -98,7 +120,13 @@ class DocumentsApp(sdsPluginBase):
                         "source":"scholar",
                         "url":"https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=info%3A"+ext["id"]+
                             "%3Ascholar.google.com"
-                    })    
+                    })
+                if ext["source"]=="minciencias":
+                    entry["external_ids"].append({
+                        "id":ext["id"],
+                        "source":"minciencias",
+                        "url":""
+                    })   
             
             return {"data":entry,"filters":{}}
         else:
