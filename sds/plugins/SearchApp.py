@@ -123,7 +123,7 @@ class SearchApp(sdsPluginBase):
                             for typ in aff["types"]: 
                                 if typ["type"]=="group":
                                     if not str(aff["id"]) in groups_ids:
-                                        groups_ids.append(aff["id"])
+                                        groups_ids.append(str(aff["id"]))
                                         group_filters.append({
                                             "id":str(aff["id"]),
                                             "name":aff["name"]
