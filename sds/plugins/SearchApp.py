@@ -122,15 +122,17 @@ class SearchApp(sdsPluginBase):
                         if "types" in aff.keys():
                             for typ in aff["types"]: 
                                 if typ["type"]=="group":
-                                    groups_ids.append(aff["id"])
-                                    group_filters.append({
-                                        "id":str(aff["id"]),
-                                        "name":aff["name"]
-                                    })
+                                    if not str(aff["id"]) in groups_ids:
+                                        groups_ids.append(aff["id"])
+                                        group_filters.append({
+                                            "id":str(aff["id"]),
+                                            "name":aff["name"]
+                                        })
                                 else:
-                                    institution_ids.append(str(aff["id"]))
-                                    entry = {"id":str(aff["id"]),"name":aff["name"]}
-                                    institution_filters.append(entry)
+                                    if not str(aff["id"]) in institution_ids:
+                                        institution_ids.append(str(aff["id"]))
+                                        entry = {"id":str(aff["id"]),"name":aff["name"]}
+                                        institution_filters.append(entry)
 
 
         if sort=="citations":
