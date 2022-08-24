@@ -249,13 +249,20 @@ class CompendiumApp(sdsPluginBase):
             if "authors" in subject.keys():
                 entry["authors"]=[{"name":au["name"],"id":au["id"]} for au in subject["authors"]][:5]
             
-            for sub in subject["counts_by_year"]:
-                if start_year and end_year:
-                    if sub["year"]<start_year or sub["year"]>end_year:
-                        entry["plot"].append({"year":sub["year"],"products":sub["products"],"citations":sub["citations"]})
-                else:
-                    entry["plot"].append({"year":sub["year"],"products":sub["products"],"citations":sub["citations"]})
-            entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
+            if "counts_by_year" in subject.keys():
+                for sub in subject["counts_by_year"]:
+                    if start_year and end_year:
+                        if sub["year"]<start_year or sub["year"]>end_year:
+                            entry["plot"].append({"year":sub["year"],"products":sub["works_count"],"citations":sub["cited_by_count"]})
+                    elif start_year and not end_year:
+                        if sub["year"]<start_year:
+                            entry["plot"].append({"year":sub["year"],"products":sub["works_count"],"citations":sub["cited_by_count"]})
+                    elif end_year and not start_year:
+                        if sub["year"]>end_year:
+                            entry["plot"].append({"year":sub["year"],"products":sub["works_count"],"citations":sub["cited_by_count"]})
+                    else:
+                        entry["plot"].append({"year":sub["year"],"products":sub["works_count"],"citations":sub["cited_by_count"]})
+                entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
             
             data.append(entry)
 
