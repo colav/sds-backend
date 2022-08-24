@@ -818,7 +818,7 @@ class SubjectsApp(sdsPluginBase):
                     "products_count":1,"citations_count":1,"subjects":1}}
             ])
 
-            total_results = self.colav_db["person"].count_documents({"policies.id":ObjectId(idx)})
+            total_results = self.colav_db["person"].count_documents({"subjects.id":ObjectId(idx)})
 
             if not page:
                 page=1
@@ -1005,46 +1005,6 @@ class SubjectsApp(sdsPluginBase):
                 response=self.json.dumps(res),
                 status=200,
                 mimetype='application/json'
-                )
-            else:
-                response = self.app.response_class(
-                response=self.json.dumps({"status":"Request returned empty"}),
-                status=204,
-                mimetype='application/json'
-                )
-        elif data=="csv":
-            idx = self.request.args.get('id')
-            start_year=self.request.args.get('start_year')
-            end_year=self.request.args.get('end_year')
-            sort=self.request.args.get('sort')
-            production_csv=self.get_csv(idx,start_year,end_year,sort,"descending")
-            if production_csv:
-                response = self.app.response_class(
-                response=production_csv,
-                status=200,
-                mimetype='text/csv',
-                headers={"Content-disposition":
-                 "attachment; filename=authors.csv"}
-                )
-            else:
-                response = self.app.response_class(
-                response=self.json.dumps({"status":"Request returned empty"}),
-                status=204,
-                mimetype='application/json'
-                )
-        elif data=="json":
-            idx = self.request.args.get('id')
-            start_year=self.request.args.get('start_year')
-            end_year=self.request.args.get('end_year')
-            sort=self.request.args.get('sort')
-            production_json=self.get_json(idx,start_year,end_year,sort,"descending")
-            if production_json:
-                response = self.app.response_class(
-                response=production_json,
-                status=200,
-                mimetype='text/plain',
-                headers={"Content-disposition":
-                 "attachment; filename=authors.json"}
                 )
             else:
                 response = self.app.response_class(
