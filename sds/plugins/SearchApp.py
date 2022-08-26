@@ -233,8 +233,9 @@ class SearchApp(sdsPluginBase):
         for r in relations:
             if "types" in r.keys():
                 for typ in r["types"]:
-                    if typ["type"]=="group":
-                        continue
+                    if "type" in typ.keys():
+                        if typ["type"]=="group":
+                            continue
             if not str(r["id"]) in filter_ids or str(r["id"])!="":
                 entry = {"id":str(r["id"]),"name":r["name"]}
                 institution_filters.append(entry)
@@ -605,8 +606,18 @@ class SearchApp(sdsPluginBase):
                     "open_access_status":paper["bibliographic_info"]["open_access_status"] if "open_access_status" in paper["bibliographic_info"] else "",
                     "year_published":paper["year_published"],
                     "citations_count":paper["citations_count"] if "citations_count" in paper.keys() else 0,
-                    "subjects":[{"name":reg["name"],"id":reg["id"]}for reg in paper["subjects"]] if "subjects" in paper.keys() else  []
+                    "subjects":[]
                 }
+                if "subjects" in paper.keys():
+                    for reg in paper["subjects"]:
+                        name=reg["names"][0]["name"]
+                        for n in reg["names"]:
+                            if n["lang"]=="es":
+                                name=n["name"]
+                                break
+                            if n["lang"]=="en":
+                                name=n["name"]
+                        entry["subjects"].append({"name":name,"id":reg["id"]})
 
                 if "source" in paper.keys():
                     source=self.colav_db["sources"].find_one({"_id":paper["source"]["id"]})
