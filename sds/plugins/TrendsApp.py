@@ -63,7 +63,7 @@ class TrendsApp(sdsPluginBase):
             for idprog,prog in enumerate(sorted(self.pddpts["PDD"][prop].keys())):
                 if not prog in prog_titles:
                     pdd_subtree[idprop]["children"].append(
-                        {"title":prog,"value":"0-0-"+str(idprog),"children":[]}
+                        {"title":prog,"value":"0-0-"+str(idprop)+"-"+str(idprog),"children":[]}
                     )
                     prog_titles.append(prog)
                 key_titles=[]
@@ -71,7 +71,7 @@ class TrendsApp(sdsPluginBase):
                     if not keyword in key_titles:
                         pdd_subtree[idprop]["children"][idprog]["children"].append(
                             {"title":keyword,
-                            "value":"0-0-"+str(idprop+1)+"-"+str(idprog+1)+"-"+str(idkey+1)
+                            "value":"0-0-"+str(idprop)+"-"+str(idprog)+"-"+str(idkey)
                             }
                         )
                         key_titles.append(keyword)
@@ -96,7 +96,7 @@ class TrendsApp(sdsPluginBase):
             for idprog,prog in enumerate(sorted(self.pddpts["PTS"][prop].keys())):
                 if not prog in prog_titles:
                     pts_subtree[idprop]["children"].append(
-                        {"title":prog,"value":"0-0-"+str(idprog),"children":[]}
+                        {"title":prog,"value":"0-0-"+str(idprop)+"-"+str(idprog),"children":[]}
                     )
                     prog_titles.append(prog)
                 key_titles=[]
@@ -104,7 +104,7 @@ class TrendsApp(sdsPluginBase):
                     if not keyword in key_titles:
                         pts_subtree[idprop]["children"][idprog]["children"].append(
                             {"title":keyword,
-                            "value":"0-0-"+str(idprop+1)+"-"+str(idprog+1)+"-"+str(idkey+1)
+                            "value":"0-0-"+str(idprop)+"-"+str(idprog)+"-"+str(idkey)
                             }
                         )
                         key_titles.append(keyword)
