@@ -222,6 +222,52 @@ class CallsApp(sdsPluginBase):
                 }
         return data
     
+    def search_ukri(self,page=1):
+        url="https://www.ukri.org/opportunity/page/"+str(page)+"/?filter_status%5B0%5D=open&filter_status%5B1%5D=upcoming&filter_submitted=true&filter_order=closing_date"
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text,'html.parser')
+        opportunities = soup.find_all('div',class_='opportunity')
+        data=[]
+        for idx,op in enumerate(opportunities):
+            entry={
+                "title":"",
+                "url":"",
+                "description":"",
+                "publication_date":"",
+                "type":"",
+                "opening_date":"",
+                "closing_date":"",
+                "total_fund":"",
+                "funders":"",
+                "funders_url":"",
+                "status":""
+            }
+            for h in op.find_all("div",class_="entry-header"):
+                entry["title"]=h.get_text().strip()
+                for a in h.find_all("a",href=True):
+                    entry["url"]=a["href"]
+            for c in op.find_all("div",class_="entry-content"):
+                entry["description"]=c.get_text().strip()
+            for m in op.find_all("div",class_="entry-meta"):
+                for s in m.find_all("span",class_="opportunity-status__flag"):
+                    entry["status"]=s.get_text().strip()
+                for a in m.find_all("a",class_="ukri-funder__link",href=True):
+                    entry["funders"]=a.get_text().strip()
+                    entry["funders_url"]=a["href"]
+                for odx,o in enumerate(m.find_all("dd",class_="opportunity-cells")):
+                    if odx==2:
+                        entry["type"]=o.get_text().strip()
+                    elif odx==3:
+                        entry["total_fund"]=o.get_text().strip()
+                    elif odx==4:
+                        entry["publication_date"]=o.get_text().strip()
+                    elif odx==5:
+                        entry["opening_date"]=o.get_text().strip()
+                    elif odx==6:
+                        entry["closing_date"]=o.get_text().strip()
+            data.append(entry)
+        return data
+    
     @endpoint('/app/calls', methods=['GET'])
     def calls_search(self):
         """
@@ -238,6 +284,9 @@ class CallsApp(sdsPluginBase):
             result = self.search_min(page=page)
         elif data=="pfizer":
             result=self.search_pfizer()
+        elif data=="ukri":
+            page=self.request.args.get('page') if 'page' in self.request.args else 1
+            result=self.search_ukri(page)
         else:
             result=None
         if result:
