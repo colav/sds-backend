@@ -75,7 +75,7 @@ class TrendsApp(sdsPluginBase):
                             }
                         )
                         key_titles.append(keyword)
-        pdd_data["tree"].append({"title":"Plan Desarrollo Distrital","value":"0-0","children":pdd_subtree})
+        pdd_data["tree"]=pdd_subtree
 
         pts_reg=self.colav_db["policies"].find_one({"abbreviations":"PTS"})
         pts_data={
@@ -108,7 +108,7 @@ class TrendsApp(sdsPluginBase):
                             }
                         )
                         key_titles.append(keyword)
-        pts_data["tree"].append({"title":"Plan Territorial de Salud","value":"0-0","children":pts_subtree})
+        pts_data["tree"]=pts_subtree
 
         return {
             "covid":covid_data,
