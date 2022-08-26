@@ -118,23 +118,110 @@ class TrendsApp(sdsPluginBase):
         }
 
     def get_program(self,program):
-        search_dict=""
+        keywords=[]
+        for key,val in self.pddpts["PDD"].items():
+            if program in list(val.keys()):
+                keywords.extend(val[program]["es"])
+                keywords.extend(val[program]["en"])
+        for key,val in self.pddpts["PTS"].items():
+            if program in list(val.keys()):
+                keywords.extend(val[program]["es"])
+                keywords.extend(val[program]["en"])
+        if len(keywords)==0:
+            return None
+
+        products_ids=[]
+        authors_ids=[]
+        groups_ids=[]
+        affiliations_ids=[]
+        subjects_ids=[]
+        word_cloud=[]
+        products=0
+        for keyword in keywords:
+            for reg in self.colav_db["works"].find({"$or":[{"titles.title":{"$regex":keyword,"$options":"i"}},{"abstract":{"$regex":keyword,"$options":"i"}}]}):
+                if str(reg["_id"]) in products_ids:
+                    continue
+                products_ids.append(str(reg["_id"]))
+                for author in reg["authors"]:
+                    if not str(author["id"]) in authors_ids:
+                        authors_ids.append(str(author["id"]))
+                    for aff in author["affiliations"]:
+                        for typ in aff["types"]:
+                            if typ["type"]=="group":
+                                if not str(aff["id"]) in groups_ids:
+                                    groups_ids.append(str(aff["id"]))
+                            else:    
+                                if not str(aff["id"]) in affiliations_ids:
+                                    affiliations_ids.append(str(aff["id"]))
+                for s in reg["subjects"]:
+                    name=s["names"][0]["name"]
+                    for n in s["names"]:
+                        if n["lang"]=="es":
+                            name=n["name"]
+                            break
+                        if n["lang"]=="en":
+                            name=n["name"]
+                    if str(s["id"]) in subjects_ids:
+                        word_cloud[subjects_ids.index(str(s["id"]))]["products"]+=1
+                    else:
+                        word_cloud.append({
+                            "id":s["id"],
+                            "name":name,
+                            "products":1
+                        })
+                        subjects_ids.append(str(s["id"]))
         entry={
-            "wordcloud":[],#subjects with id, name
-            "products":0,#count
-            "authors":0,#count
-            "institutions":0,#count
-            "groups":0#count
+            "products":len(products_ids),#count
+            "authors":len(authors_ids),#count
+            "institutions":len(affiliations_ids),#count
+            "groups":len(groups_ids),#count
+            "word_cloud":word_cloud,#subjects with id, name
         }
         return entry
     
     def get_concept(self,concept):
+        authors_ids=[]
+        groups_ids=[]
+        affiliations_ids=[]
+        subjects_ids=[]
+        word_cloud=[]
+        products=0
+        for reg in self.colav_db["works"].find({"$or":[{"titles.title":{"$regex":concept,"$options":"i"}},{"abstract":{"$regex":concept,"$options":"i"}}]}):
+            products+=1
+            for author in reg["authors"]:
+                if not str(author["id"]) in authors_ids:
+                    authors_ids.append(str(author["id"]))
+                for aff in author["affiliations"]:
+                    for typ in aff["types"]:
+                        if typ["type"]=="group":
+                            if not str(aff["id"]) in groups_ids:
+                                groups_ids.append(str(aff["id"]))
+                        else:    
+                            if not str(aff["id"]) in affiliations_ids:
+                                affiliations_ids.append(str(aff["id"]))
+            for s in reg["subjects"]:
+                name=s["names"][0]["name"]
+                for n in s["names"]:
+                    if n["lang"]=="es":
+                        name=n["name"]
+                        break
+                    if n["lang"]=="en":
+                        name=n["name"]
+                if str(s["id"]) in subjects_ids:
+                    word_cloud[subjects_ids.index(str(s["id"]))]["products"]+=1
+                else:
+                    word_cloud.append({
+                        "id":s["id"],
+                        "name":name,
+                        "products":1
+                    })
+                    subjects_ids.append(str(s["id"]))
         entry={
-            "wordcloud":[],#subjects with id, name
-            "products":0,#count
-            "authors":0,#count
-            "institutions":0,#count
-            "groups":0#count
+            "products":products,#count
+            "authors":len(authors_ids),#count
+            "institutions":len(affiliations_ids),#count
+            "groups":len(groups_ids),#count
+            "word_cloud":word_cloud,#subjects with id, name
         }
         return entry
 
