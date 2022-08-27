@@ -4,6 +4,7 @@ from pymongo import ASCENDING,DESCENDING
 import requests
 import json
 from bs4 import BeautifulSoup
+from datetime import datetime as dt
 from dateutil import parser
 import html_to_json
 
@@ -13,8 +14,6 @@ class CallsApp(sdsPluginBase):
         super().__init__(sds)
 
     def search_nih(self,max_results=100,page=1):
-
-
         if not page:
             page=1
         else:
@@ -65,9 +64,6 @@ class CallsApp(sdsPluginBase):
                 "url":url}
 
             calls.append(entry)
-
-
-
 
         return {"total":total,"page":page,"data":calls}
     
@@ -163,7 +159,114 @@ class CallsApp(sdsPluginBase):
                     calls.append(calls_even[i])
 
         return {"data":calls,"total":len(calls),"page":0}
-        
+
+    def search_pfizer(self):
+        url="https://www.pfizer.com/about/programs-policies/grants/competitive-grants?viewsreference%5Bdata%5D%5Bargument%5D=&viewsreference%5Bdata%5D%5Blimit%5D=&viewsreference%5Bdata%5D%5Boffset%5D=&viewsreference%5Bdata%5D%5Bpager%5D=&viewsreference%5Bdata%5D%5Btitle%5D=0&viewsreference%5Benabled_settings%5D%5Bpager%5D=pager&viewsreference%5Benabled_settings%5D%5Bargument%5D=argument&viewsreference%5Benabled_settings%5D%5Blimit%5D=limit&viewsreference%5Benabled_settings%5D%5Boffset%5D=offset&viewsreference%5Benabled_settings%5D%5Btitle%5D=title&items_per_page=12&search_api_fulltext=&order=field_rfp_loi_due_date&sort=desc"
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text,'html.parser')
+        table = soup.find_all('td',class_='views-field')
+        data=[]
+        column_index=0
+        entry={
+            "title":"",
+            "release_date":"",
+            "due_date":"",
+            "review_process":"",
+            "grant_type":"",
+            "focus_area":"",
+            "country":"",
+            "url":"",
+        }
+        for idx,cell in enumerate(table):
+            if column_index==0:
+                for item in cell.find_all("div",class_="compound-name"):
+                    entry["title"]=item.get_text().strip()
+                idate=""
+                for jdx,item in enumerate(cell.find_all("span",class_="data")):
+                    if jdx==0:
+                        idate=dt.strptime(item.get_text(),"%B %d, %Y")
+                    else:
+                        entry["review_process"]=item.get_text().strip()
+                if idate:
+                    entry["release_date"]=idate.strftime("%Y-%m-%d")
+                for item in cell.find_all("a",class_="clinical-link",href=True):
+                    entry["url"]=item["href"]
+                column_index+=1
+            elif column_index==1:
+                #print(idx,column_index,cell.get_text())
+                entry["grant_type"]=cell.get_text().strip()
+                column_index+=1
+            elif column_index==2:
+                #print(idx,column_index,cell.get_text())
+                entry["focus_area"]=cell.get_text().strip()
+                column_index+=1
+            elif column_index==3:
+                #print(idx,column_index,cell.get_text())
+                entry["country"]=cell.get_text().strip()
+                column_index+=1
+            elif column_index==4:
+                #print(idx,column_index,cell.get_text())
+                date=dt.strptime(cell.get_text(),"%B %d, %Y")
+                entry["due_date"]=date.strftime("%Y-%m-%d")
+                data.append(entry)
+                column_index=0
+                entry={
+                    "title":"",
+                    "release_date":"",
+                    "due_date":"",
+                    "review_process":"",
+                    "grant_type":"",
+                    "focus_area":"",
+                    "country":"",
+                    "url":"",
+                }
+        return data
+    
+    def search_ukri(self,page=1):
+        url="https://www.ukri.org/opportunity/page/"+str(page)+"/?filter_status%5B0%5D=open&filter_status%5B1%5D=upcoming&filter_submitted=true&filter_order=closing_date"
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text,'html.parser')
+        opportunities = soup.find_all('div',class_='opportunity')
+        data=[]
+        for idx,op in enumerate(opportunities):
+            entry={
+                "title":"",
+                "url":"",
+                "description":"",
+                "publication_date":"",
+                "type":"",
+                "opening_date":"",
+                "closing_date":"",
+                "total_fund":"",
+                "funders":"",
+                "funders_url":"",
+                "status":""
+            }
+            for h in op.find_all("div",class_="entry-header"):
+                entry["title"]=h.get_text().strip()
+                for a in h.find_all("a",href=True):
+                    entry["url"]=a["href"]
+            for c in op.find_all("div",class_="entry-content"):
+                entry["description"]=c.get_text().strip()
+            for m in op.find_all("div",class_="entry-meta"):
+                for s in m.find_all("span",class_="opportunity-status__flag"):
+                    entry["status"]=s.get_text().strip()
+                for a in m.find_all("a",class_="ukri-funder__link",href=True):
+                    entry["funders"]=a.get_text().strip()
+                    entry["funders_url"]=a["href"]
+                for odx,o in enumerate(m.find_all("dd",class_="opportunity-cells")):
+                    if odx==2:
+                        entry["type"]=o.get_text().strip()
+                    elif odx==3:
+                        entry["total_fund"]=o.get_text().strip()
+                    elif odx==4:
+                        entry["publication_date"]=o.get_text().strip()
+                    elif odx==5:
+                        entry["opening_date"]=o.get_text().strip()
+                    elif odx==6:
+                        entry["closing_date"]=o.get_text().strip()
+            data.append(entry)
+        return data
     
     @endpoint('/app/calls', methods=['GET'])
     def calls_search(self):
@@ -179,9 +282,13 @@ class CallsApp(sdsPluginBase):
         elif data=="min":
             page=self.request.args.get('page') if 'page' in self.request.args else 1
             result = self.search_min(page=page)
+        elif data=="pfizer":
+            result=self.search_pfizer()
+        elif data=="ukri":
+            page=self.request.args.get('page') if 'page' in self.request.args else 1
+            result=self.search_ukri(page)
         else:
             result=None
-
         if result:
             response = self.app.response_class(
             response=self.json.dumps(result),

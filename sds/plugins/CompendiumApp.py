@@ -152,7 +152,7 @@ class CompendiumApp(sdsPluginBase):
 
         return {"filters":filters}
 
-    def get_subjects(self,page=1,max_results=10,institutions=[],groups=[],sort="citations",direction="descending"):
+    def get_subjects(self,page=1,max_results=10,groups="",institutions="",start_year=None,end_year=None,sort="citations",direction="descending"):
         if not page:
             page=1
         else:
@@ -168,6 +168,19 @@ class CompendiumApp(sdsPluginBase):
                 max_results=int(max_results)
             except:
                 print("Could not convert end max to int")
+                return None
+
+        if start_year:
+            try:
+                start_year=int(start_year)
+            except:
+                print("Could not convert start year to int")
+                return None
+        if end_year:
+            try:
+                end_year=int(end_year)
+            except:
+                print("Could not convert end year to int")
                 return None
 
         search_dict={}
@@ -236,8 +249,20 @@ class CompendiumApp(sdsPluginBase):
             if "authors" in subject.keys():
                 entry["authors"]=[{"name":au["name"],"id":au["id"]} for au in subject["authors"]][:5]
             
-            entry["plot"]=[{"year":sub["year"],"products":sub["products_count"],"citations":sub["citations_count"]} for sub in subject["counts_by_year"] if sub["year"]<start_year or sub["year"]>end_year]
-            entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
+            if "counts_by_year" in subject.keys():
+                for sub in subject["counts_by_year"]:
+                    if start_year and end_year:
+                        if sub["year"]<start_year or sub["year"]>end_year:
+                            entry["plot"].append({"year":sub["year"],"products":sub["works_count"],"citations":sub["cited_by_count"]})
+                    elif start_year and not end_year:
+                        if sub["year"]<start_year:
+                            entry["plot"].append({"year":sub["year"],"products":sub["works_count"],"citations":sub["cited_by_count"]})
+                    elif end_year and not start_year:
+                        if sub["year"]>end_year:
+                            entry["plot"].append({"year":sub["year"],"products":sub["works_count"],"citations":sub["cited_by_count"]})
+                    else:
+                        entry["plot"].append({"year":sub["year"],"products":sub["works_count"],"citations":sub["cited_by_count"]})
+                entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
             
             data.append(entry)
 
@@ -705,7 +730,14 @@ class CompendiumApp(sdsPluginBase):
             max_results=self.request.args.get('max')
             page=self.request.args.get('page')
             sort=self.request.args.get('sort')
-            subjects=self.get_subjects(page=page,max_results=max_results,sort=sort)
+            start_year=self.request.args.get('start_year')
+            end_year=self.request.args.get('end_year')
+            inst=self.request.args.get('institutions')
+            grps=self.request.args.get('groups')
+            subjects=self.get_subjects(
+                page=page,max_results=max_results,sort=sort,
+                start_year=start_year,end_year=end_year,
+                groups=grps,institutions=inst)
             if subjects:    
                 response = self.app.response_class(
                 response=self.json.dumps(subjects),
