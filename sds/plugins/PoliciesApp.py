@@ -426,7 +426,15 @@ class PoliciesApp(sdsPluginBase):
 
                 for subs in paper["subjects"]:
                     if subs["source"]=="openalex":
-                        entry["subjects"]=subs["subjects"]
+                        for sub in subs["subjects"]:
+                            name=sub["names"][0]["name"]
+                            for n in sub["names"]:
+                                if n["lang"]=="es":
+                                    name=n["name"]
+                                    break
+                                if n["lang"]=="en":
+                                    name=n["name"]
+                            entry["subjects"].append({"name":name,"id":sub["id"]})
                         break
 
                 if "source" in paper.keys():
@@ -529,13 +537,7 @@ class PoliciesApp(sdsPluginBase):
                 if end_year<year:
                     continue
             for sub in reg["subjects"]:
-                name=sub["names"][0]["name"]
-                for n in sub["names"]:
-                    if n["lang"]=="es":
-                        name=n["name"]
-                        break
-                    if n["lang"]=="en":
-                        name=n["name"]
+                name=sub["name"]
                 if name in names:
                     data[names.index(name)]["products"]+=sub["products"]
                 else:
@@ -619,16 +621,9 @@ class PoliciesApp(sdsPluginBase):
             for subs in reg["subjects"]:
                 if subs["source"]=="openalex":
                     for s in subs["subjects"]:
-                        name=s["names"][0]["name"]
-                        for n in s["names"]:
-                            if n["lang"]=="es":
-                                name=n["name"]
-                                break
-                            if n["lang"]=="en":
-                                name=n["name"]
-                        word_cloud.append({
+                        entry["word_cloud"].append({
                             "id":s["id"],
-                            "name":name,
+                            "name":s["name"],
                             "products":s["products"],
                             "citations":s["citations"]
                         })
@@ -644,28 +639,10 @@ class PoliciesApp(sdsPluginBase):
                         continue
                 entry["plot"].append({
                     "year":prod["year"],
-                    "products":prod["value"],
-                    "citations":0
+                    "products":prod["value"]
                 })
                 year_index[prod["year"]]=i
                 i+=1
-            if "citations_by_year" in reg.keys():
-                for cit in reg["citations_by_year"]:
-                    if start_year:
-                        if cit["year"]<start_year:
-                            continue
-                    if end_year:
-                        if cit["year"]>end_year:
-                            continue
-                    if cit["year"] in year_index.keys():
-                        i=year_index[cit["year"]]
-                        entry["plot"][i]["citations"]=cit["value"]
-                    else:
-                        entry["plot"].append({
-                            "year":cit["year"],
-                            "products":0,
-                            "citations":cit["value"]
-                        })
             entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
 
             data.append(entry)
@@ -750,20 +727,13 @@ class PoliciesApp(sdsPluginBase):
                                 "name":reg["relations"][0]["name"],
                                 "id":reg["relations"][0]["id"]
                             }
-
+            
             for subs in reg["subjects"]:
                 if subs["source"]=="openalex":
                     for s in subs["subjects"]:
-                        name=s["names"][0]["name"]
-                        for n in s["names"]:
-                            if n["lang"]=="es":
-                                name=n["name"]
-                                break
-                            if n["lang"]=="en":
-                                name=n["name"]
-                        word_cloud.append({
+                        entry["word_cloud"].append({
                             "id":s["id"],
-                            "name":name,
+                            "name":s["name"],
                             "products":s["products"],
                             "citations":s["citations"]
                         })
@@ -779,29 +749,11 @@ class PoliciesApp(sdsPluginBase):
                         continue
                 entry["plot"].append({
                     "year":prod["year"],
-                    "products":prod["value"],
-                    "citations":0
+                    "products":prod["value"]
                 })
                 year_index[prod["year"]]=i
                 i+=1
-            
-            if "citations_by_year" in reg.keys():
-                for cit in reg["citations_by_year"]:
-                    if start_year:
-                        if cit["year"]<start_year:
-                            continue
-                    if end_year:
-                        if cit["year"]>end_year:
-                            continue
-                    if cit["year"] in year_index.keys():
-                        i=year_index[cit["year"]]
-                        entry["plot"][i]["citations"]=cit["value"]
-                    else:
-                        entry["plot"].append({
-                            "year":cit["year"],
-                            "products":0,
-                            "citations":cit["value"]
-                        })
+    
             entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
 
             data.append(entry)
