@@ -357,6 +357,7 @@ class SubjectsApp(sdsPluginBase):
     
     def get_production_by_type(self,idx=None,max_results=100,page=1,groups=None,institutions=None,start_year=None,end_year=None,sort="descending",direction=None,tipo=None):
         total = 0
+        search_dict={}
 
         if start_year:
             try:
