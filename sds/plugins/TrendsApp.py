@@ -153,23 +153,27 @@ class TrendsApp(sdsPluginBase):
                             else:    
                                 if not str(aff["id"]) in affiliations_ids:
                                     affiliations_ids.append(str(aff["id"]))
-                for s in reg["subjects"]:
-                    name=s["names"][0]["name"]
-                    for n in s["names"]:
-                        if n["lang"]=="es":
-                            name=n["name"]
-                            break
-                        if n["lang"]=="en":
-                            name=n["name"]
-                    if str(s["id"]) in subjects_ids:
-                        word_cloud[subjects_ids.index(str(s["id"]))]["products"]+=1
-                    else:
-                        word_cloud.append({
-                            "id":s["id"],
-                            "name":name,
-                            "products":1
-                        })
-                        subjects_ids.append(str(s["id"]))
+                
+                for sub in reg["subjects"]:
+                    if not sub["source"]=="openalex":
+                        continue
+                    for s in sub["subjects"]:
+                        name=s["names"][0]["name"]
+                        for n in s["names"]:
+                            if n["lang"]=="es":
+                                name=n["name"]
+                                break
+                            if n["lang"]=="en":
+                                name=n["name"]
+                        if str(s["id"]) in subjects_ids:
+                            word_cloud[subjects_ids.index(str(s["id"]))]["products"]+=1
+                        else:
+                            word_cloud.append({
+                                "id":s["id"],
+                                "name":name,
+                                "products":1
+                            })
+                            subjects_ids.append(str(s["id"]))
         entry={
             "products":len(products_ids),#count
             "authors":len(authors_ids),#count
@@ -199,23 +203,26 @@ class TrendsApp(sdsPluginBase):
                         else:    
                             if not str(aff["id"]) in affiliations_ids:
                                 affiliations_ids.append(str(aff["id"]))
-            for s in reg["subjects"]:
-                name=s["names"][0]["name"]
-                for n in s["names"]:
-                    if n["lang"]=="es":
-                        name=n["name"]
-                        break
-                    if n["lang"]=="en":
-                        name=n["name"]
-                if str(s["id"]) in subjects_ids:
-                    word_cloud[subjects_ids.index(str(s["id"]))]["products"]+=1
-                else:
-                    word_cloud.append({
-                        "id":s["id"],
-                        "name":name,
-                        "products":1
-                    })
-                    subjects_ids.append(str(s["id"]))
+            for sub in reg["subjects"]:
+                if not sub["source"]=="openalex":
+                    continue
+                for s in sub["subjects"]:
+                    name=s["names"][0]["name"]
+                    for n in s["names"]:
+                        if n["lang"]=="es":
+                            name=n["name"]
+                            break
+                        if n["lang"]=="en":
+                            name=n["name"]
+                    if str(s["id"]) in subjects_ids:
+                        word_cloud[subjects_ids.index(str(s["id"]))]["products"]+=1
+                    else:
+                        word_cloud.append({
+                            "id":s["id"],
+                            "name":name,
+                            "products":1
+                        })
+                        subjects_ids.append(str(s["id"]))
         entry={
             "products":products,#count
             "authors":len(authors_ids),#count
