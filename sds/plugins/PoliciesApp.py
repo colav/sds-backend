@@ -615,13 +615,13 @@ class PoliciesApp(sdsPluginBase):
                 "plot":[],
                 "citations_count":reg["citations_count"] if "citations_count" in reg.keys() else 0,
                 "products_count":reg["products_count"],
-                "word_cloud":[]
+                "subjects":[]
             }
 
             for subs in reg["subjects"]:
                 if subs["source"]=="openalex":
                     for s in subs["subjects"]:
-                        entry["word_cloud"].append({
+                        entry["subjects"].append({
                             "id":s["id"],
                             "name":s["name"],
                             "products":s["products"],
@@ -717,7 +717,7 @@ class PoliciesApp(sdsPluginBase):
                 "plot":[],
                 "citations_count":reg["citations_count"] if "citations_count" in reg.keys() else 0,
                 "products_count":reg["products_count"],
-                "word_cloud":[]
+                "subjects":[]
             }
             if "relations" in reg.keys():
                 for relation in reg["relations"]:
@@ -731,7 +731,7 @@ class PoliciesApp(sdsPluginBase):
             for subs in reg["subjects"]:
                 if subs["source"]=="openalex":
                     for s in subs["subjects"]:
-                        entry["word_cloud"].append({
+                        entry["subjects"].append({
                             "id":s["id"],
                             "name":s["name"],
                             "products":s["products"],
