@@ -34,6 +34,7 @@ class AuthorsApp(sdsPluginBase):
             entry={
                 "id":author["_id"],
                 "name":author["full_name"],
+                "citations":author["citations_count"],
                 "affiliation":{"institution":{"name":"","id":""},"group":{"name":"","id":""}},
                 "external_urls":[],
                 "policies":{},
