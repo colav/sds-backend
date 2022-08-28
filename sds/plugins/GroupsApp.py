@@ -39,6 +39,7 @@ class GroupsApp(sdsPluginBase):
                     name=n["name"]
             entry={"id":group["_id"],
                 "name":name,
+                "citations":group["citations_count"],
                 "type":group["types"][0]["type"],
                 "abbreviations":"",
                 "external_urls":group["external_urls"],
@@ -102,65 +103,6 @@ class GroupsApp(sdsPluginBase):
             return {"data": entry, "filters": filters }
         else:
             return None
-    
-    def hindex(self,citation_list):
-        return sum(x >= i + 1 for i, x in enumerate(sorted(list(citation_list), reverse=True)))
-
-    def get_citations(self,idx=None,start_year=None,end_year=None):
-        geojson=json.load(open("sds/etc/world_map.json","r"))
-        entry={
-            "citations":0,
-            "yearly_citations":[],
-            "geo": []
-        }
-
-        if start_year:
-            try:
-                start_year=int(start_year)
-            except:
-                return {"error":"Could not convert start year to int"}
-        if end_year:
-            try:
-                end_year=int(end_year)
-            except:
-                return {"error":"Could not convert start year to int"}
-
-        countries={}
-        years=[]
-        group=self.colav_db["affiliations"].find_one({"types.type":"group","_id":ObjectId(idx)})
-        if group:
-            if not "yearly_geo_citations" in group.keys():
-                return {"error":"No information to process"}
-            for year,alpha2,country,citations in group["yearly_geo_citations"]:
-                if year<start_year or year>end_year:
-                    continue
-                entry["citations"]+=citations
-                if year in years:
-                    entry["yearly_citations"][years.index(year)]["value"]+=citations
-                else:
-                    entry["yearly_citatios"].append({"year":year,"value":citations})
-                    years.append(year)
-                if alpha2 in countries.keys():
-                    countries[alpha2]["count"]+=citations
-                else:
-                    countries[alpha2]={
-                        "count":citations,
-                        "name":country_name
-                    }
-        else:
-            return {"error":"No information to process"}
-
-        for key,val in countries.items():
-            countries[key]["log_count"]=log(val["count"])
-        for idx,feat in enumerate(geojson["features"]):
-            if feat["properties"]["country_code"] in countries.keys():
-               alpha2=feat["properties"]["country_code"]
-               geojson["features"][idx]["properties"]["count"]=countries[alpha2]["count"]
-               geojson["features"][idx]["properties"]["log_count"]=countries[alpha2]["log_count"]
-
-        entry["geo"]=geojson
-    
-        return {"data": entry}
 
     def get_authors(self,idx=None,page=1,max_results=100,sort="citations",direction="descending"):
         if idx:
@@ -626,7 +568,15 @@ class GroupsApp(sdsPluginBase):
 
                 for subs in paper["subjects"]:
                     if subs["source"]=="openalex":
-                        entry["subjects"]=subs["subjects"]
+                        for sub in subs["subjects"]:
+                            name=sub["names"][0]["name"]
+                            for n in sub["names"]:
+                                if n["lang"]=="es":
+                                    name=n["name"]
+                                    break
+                                if n["lang"]=="en":
+                                    name=n["name"]
+                            entry["subjects"].append({"name":name,"id":sub["id"]})
                         break
 
                 if "source" in paper.keys():
@@ -720,24 +670,6 @@ class GroupsApp(sdsPluginBase):
             if production:
                 response = self.app.response_class(
                 response=self.json.dumps(production),
-                status=200,
-                mimetype='application/json'
-                )
-            else:
-                response = self.app.response_class(
-                response=self.json.dumps({"status":"Request returned empty"}),
-                status=204,
-                mimetype='application/json'
-                )
-
-        elif data=="citations":
-            idx = self.request.args.get('id')
-            start_year=self.request.args.get('start_year')
-            end_year=self.request.args.get('end_year')
-            citations=self.get_citations(idx,start_year,end_year)
-            if citations:
-                response = self.app.response_class(
-                response=self.json.dumps(citations),
                 status=200,
                 mimetype='application/json'
                 )
