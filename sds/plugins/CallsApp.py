@@ -266,7 +266,14 @@ class CallsApp(sdsPluginBase):
                     elif odx==6:
                         entry["closing_date"]=o.get_text().strip()
             data.append(entry)
-        return data
+        numbers=[]
+        page_numbers=soup.find_all('a',class_='page-numbers')
+        for number in page_numbers:
+            if number.get_text()=="Next page" or number.get_text()=="Previous page":
+                continue
+            numbers.append(int(number.get_text().split("Page ")[-1]))
+        max_page=max(numbers)
+        return {"total":max_page*10,"max_page":max_page,"page":page,"data":data}
     
     @endpoint('/app/calls', methods=['GET'])
     def calls_search(self):
