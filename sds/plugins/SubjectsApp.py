@@ -583,7 +583,8 @@ class SubjectsApp(sdsPluginBase):
                             "products":s["products"],
                             "citations":s["citations"]
                         })
-            
+            if entry["word_cloud"]:
+                entry["word_cloud"]=entry["word_cloud"][:10] if len(entry["word_cloud"])>=10 else entry["word_cloud"]
             year_index={}
             i=0
             for prod in reg["products_by_year"]:
@@ -694,7 +695,8 @@ class SubjectsApp(sdsPluginBase):
                             "products":s["products"],
                             "citations":s["citations"]
                         })
-            
+            if entry["word_cloud"]:
+                entry["word_cloud"]=entry["word_cloud"][:10] if len(entry["word_cloud"])>=10 else entry["word_cloud"]
             year_index={}
             i=0
             for prod in reg["products_by_year"]:
