@@ -472,7 +472,7 @@ class SubjectsApp(sdsPluginBase):
                                     for typ in aff["types"]:
                                         if typ["type"]=="group":
                                             if groups:
-                                                if aff["id"] in aff_list:
+                                                if aff["id"] in def_list:
                                                     author_entry["affiliation"]["group"]={
                                                         "name":aff["name"],
                                                         "id":aff["id"]
@@ -484,7 +484,7 @@ class SubjectsApp(sdsPluginBase):
                                                 }
                                         else:
                                             if institutions:
-                                                if aff["id"] in aff_list:
+                                                if aff["id"] in def_list:
                                                     author_entry["affiliation"]["institution"]["name"]=aff["name"]
                                                     author_entry["affiliation"]["institution"]["id"]  =aff["id"]
                                             else:    
@@ -795,14 +795,21 @@ class SubjectsApp(sdsPluginBase):
             pipeline=[
                 {"$match":{"subjects.subjects.id":ObjectId(idx)}}
             ]
+            count_pipeline=[
+                {"$match":{"subjects.subjects.id":ObjectId(idx)}}
+            ]
 
             pipeline.extend([{"$unwind":"$authors"}])
+            count_pipeline.extend([{"$unwind":"$authors"}])
             if aff_list:
                 pipeline.append({"$match":{"authors.affiliations.id":{"$in":aff_list}}})
+                count_pipeline.append({"$match":{"authors.affiliations.id":{"$in":aff_list}}})
             if start_year:
                 pipeline.append({"$match":{"year_published":{"$gte":start_year}}})
+                count_pipeline.append({"$match":{"year_published":{"$gte":start_year}}})
             if end_year:
                 pipeline.append({"$match":{"year_published":{"$lte":end_year}}})
+                count_pipeline.append({"$match":{"year_published":{"$lte":end_year}}})
             pipeline.extend([
                 {"$project":{"authors":1,"citations_count":1,"subjects":1}},
                 {"$group":{"_id":"$authors.id","products_count":{"$sum":1},"citations_count":{"$sum":"$citations_count"},"author":{"$first":"$authors"},"subjects":{"$last":"$subjects"}}},
@@ -810,8 +817,17 @@ class SubjectsApp(sdsPluginBase):
                 {"$project":{"author.id":1,"author.full_name":1,"author.affiliations":1,
                     "products_count":1,"citations_count":1,"subjects":1}}
             ])
+            count_pipeline.extend([
+                {"$project":{"authors":1,"citations_count":1,"subjects":1}},
+                {"$group":{"_id":"$authors.id","products_count":{"$sum":1},"citations_count":{"$sum":"$citations_count"},"author":{"$first":"$authors"},"subjects":{"$last":"$subjects"}}},
+                {"$sort":{sorting_var:-1}},
+                {"$project":{"author.id":1,"author.full_name":1,"author.affiliations":1,
+                    "products_count":1,"citations_count":1,"subjects":1}}
+            ])
 
-            total_results = self.colav_db["person"].count_documents({"subjects.subjects.id":ObjectId(idx)})
+            count_pipeline.extend([{"$count":"total"}])
+                
+            total_results=list(self.colav_db["works"].aggregate(count_pipeline,allowDiskUse=True))[0]["total"]
 
             if not page:
                 page=1
