@@ -293,7 +293,7 @@ class GroupsApp(sdsPluginBase):
                 {"id":reg["_id"],"name":reg["author"]["full_name"],
                 "affiliation":{
                     "institution":{"id":affiliation_id,"name":affiliation_name} ,
-                    "group":{"id":group_id,"name":group_name} ,
+                    "group":{"id":group_id,"name":group_name},
                     },
                 "count":reg["count"]} 
             )
