@@ -17,10 +17,18 @@ class RegulationsApp(sdsPluginBase):
         dates={}
         for filename in os.listdir('sds/etc/.'):
             if "pdf" in filename:
-                date_str=re.findall("^[0-9]*-[0-9]*-[0-9]*",filename)[0]
-                date=dt.datetime.strptime(date_str,"%Y-%m-%d")
-                dates[date_str]=date.timestamp()
-                files.append({"filename":filename,"date":date_str,"size":os.stat('sds/etc/'+filename).st_size/1024})
+                try:
+                    date_str=re.findall("^[0-9]*-[0-9]*-[0-9]*",filename)[0]
+                    date=dt.datetime.strptime(date_str,"%Y-%m-%d")
+                    dates[date_str]=date.timestamp()
+                except:
+                    date_str=" "
+                    dates[" "]=0
+                files.append({
+                    "filename":filename,
+                    "date":date_str,
+                    "size":os.stat('sds/etc/'+filename).st_size/1024
+                })
         files_sorted=sorted(files,key=lambda x:dates[x["date"]],reverse=True)
         return {"data":files_sorted}
 
