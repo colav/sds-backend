@@ -609,15 +609,18 @@ class SearchApp(sdsPluginBase):
                     "subjects":[]
                 }
                 if "subjects" in paper.keys():
-                    for reg in paper["subjects"]:
-                        name=reg["names"][0]["name"]
-                        for n in reg["names"]:
-                            if n["lang"]=="es":
-                                name=n["name"]
-                                break
-                            if n["lang"]=="en":
-                                name=n["name"]
-                        entry["subjects"].append({"name":name,"id":reg["id"]})
+                    for subject in paper["subjects"]:
+                        if not subject["source"]=="openalex":
+                            continue
+                        for sub in subject["subjects"]:
+                            name=sub["names"][0]["name"]
+                            for n in sub["names"]:
+                                if n["lang"]=="es":
+                                    name=n["name"]
+                                    break
+                                if n["lang"]=="en":
+                                    name=n["name"]
+                            entry["subjects"].append({"name":name,"id":sub["id"]})
 
                 if "source" in paper.keys():
                     source=self.colav_db["sources"].find_one({"_id":paper["source"]["id"]})

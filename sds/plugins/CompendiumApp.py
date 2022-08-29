@@ -557,6 +557,7 @@ class CompendiumApp(sdsPluginBase):
         search_dict={"types.type":{"$ne":"group"}}
         ins_list=[]
         grp_list=[]
+        def_ins_list=[]
         if groups:
             grp_list.extend(groups.split())
         if institutions:
@@ -651,7 +652,7 @@ class CompendiumApp(sdsPluginBase):
             
             data.append(entry)
 
-        return {"data":data,"page":page,"count":max_results,"total":total}
+        return {"data":data,"page":page,"count":len(data),"total":total}
             
 
     @endpoint('/app/compendium', methods=['GET'])

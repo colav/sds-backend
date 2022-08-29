@@ -357,6 +357,7 @@ class SubjectsApp(sdsPluginBase):
     
     def get_production_by_type(self,idx=None,max_results=100,page=1,groups=None,institutions=None,start_year=None,end_year=None,sort="descending",direction=None,tipo=None):
         total = 0
+        search_dict={}
 
         if start_year:
             try:
@@ -439,7 +440,15 @@ class SubjectsApp(sdsPluginBase):
 
                 for subs in paper["subjects"]:
                     if subs["source"]=="openalex":
-                        entry["subjects"]=subs["subjects"]
+                        for sub in subs["subjects"]:
+                            name=sub["names"][0]["name"]
+                            for n in sub["names"]:
+                                if n["lang"]=="es":
+                                    name=n["name"]
+                                    break
+                                if n["lang"]=="en":
+                                    name=n["name"]
+                            entry["subjects"].append({"name":name,"id":sub["id"]})
                         break
 
                 if "source" in paper.keys():
@@ -567,14 +576,8 @@ class SubjectsApp(sdsPluginBase):
             for subs in reg["subjects"]:
                 if subs["source"]=="openalex":
                     for s in subs["subjects"]:
-                        name=s["names"][0]["name"]
-                        for n in s["names"]:
-                            if n["lang"]=="es":
-                                name=n["name"]
-                                break
-                            if n["lang"]=="en":
-                                name=n["name"]
-                        word_cloud.append({
+                        name=s["name"]
+                        entry["word_cloud"].append({
                             "id":s["id"],
                             "name":name,
                             "products":s["products"],
@@ -592,28 +595,10 @@ class SubjectsApp(sdsPluginBase):
                         continue
                 entry["plot"].append({
                     "year":prod["year"],
-                    "products":prod["value"],
-                    "citations":0
+                    "products":prod["value"]
                 })
                 year_index[prod["year"]]=i
                 i+=1
-            if "citations_by_year" in reg.keys():
-                for cit in reg["citations_by_year"]:
-                    if start_year:
-                        if cit["year"]<start_year:
-                            continue
-                    if end_year:
-                        if cit["year"]>end_year:
-                            continue
-                    if cit["year"] in year_index.keys():
-                        i=year_index[cit["year"]]
-                        entry["plot"][i]["citations"]=cit["value"]
-                    else:
-                        entry["plot"].append({
-                            "year":cit["year"],
-                            "products":0,
-                            "citations":cit["value"]
-                        })
             entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
 
             data.append(entry)
@@ -702,14 +687,8 @@ class SubjectsApp(sdsPluginBase):
             for subs in reg["subjects"]:
                 if subs["source"]=="openalex":
                     for s in subs["subjects"]:
-                        name=s["names"][0]["name"]
-                        for n in s["names"]:
-                            if n["lang"]=="es":
-                                name=n["name"]
-                                break
-                            if n["lang"]=="en":
-                                name=n["name"]
-                        word_cloud.append({
+                        name=s["name"]
+                        entry["word_cloud"].append({
                             "id":s["id"],
                             "name":name,
                             "products":s["products"],
@@ -727,29 +706,11 @@ class SubjectsApp(sdsPluginBase):
                         continue
                 entry["plot"].append({
                     "year":prod["year"],
-                    "products":prod["value"],
-                    "citations":0
+                    "products":prod["value"]
                 })
                 year_index[prod["year"]]=i
                 i+=1
             
-            if "citations_by_year" in reg.keys():
-                for cit in reg["citations_by_year"]:
-                    if start_year:
-                        if cit["year"]<start_year:
-                            continue
-                    if end_year:
-                        if cit["year"]>end_year:
-                            continue
-                    if cit["year"] in year_index.keys():
-                        i=year_index[cit["year"]]
-                        entry["plot"][i]["citations"]=cit["value"]
-                    else:
-                        entry["plot"].append({
-                            "year":cit["year"],
-                            "products":0,
-                            "citations":cit["value"]
-                        })
             entry["plot"]=sorted(entry["plot"],key=lambda x:x["year"])
 
             data.append(entry)
@@ -885,7 +846,15 @@ class SubjectsApp(sdsPluginBase):
                             }
                             for subs in reg["subjects"]:
                                 if subs["source"]=="openalex":
-                                    entry["subjects"]=subs["subjects"]
+                                    for sub in subs["subjects"]:
+                                        name=sub["names"][0]["name"]
+                                        for n in sub["names"]:
+                                            if n["lang"]=="es":
+                                                name=n["name"]
+                                                break
+                                            if n["lang"]=="en":
+                                                name=n["name"]
+                                        entry["subjects"].append({"name":name,"id":sub["id"]})
                                     break
                             data.append(entry)
             
