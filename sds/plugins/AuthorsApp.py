@@ -226,7 +226,7 @@ class AuthorsApp(sdsPluginBase):
             {"$unwind":"$authors.affiliations"},
             {"$group":{"_id":"$authors.id","count":{"$sum":1}}},
             {"$sort":{"count":-1}},
-            {"$lookup":{"from":"authors","localField":"_id","foreignField":"_id","as":"author"}},
+            {"$lookup":{"from":"person","localField":"_id","foreignField":"_id","as":"author"}},
             {"$project":{"count":1,"author.full_name":1,"author.affiliations":1}},
             {"$unwind":"$author"}
         ])
@@ -249,21 +249,11 @@ class AuthorsApp(sdsPluginBase):
                     if "types" in aff.keys():
                         for typ in aff["types"]:
                             if typ["type"]=="group":
-                                if groups:
-                                    if aff["id"] in aff_list:
-                                        group_name=aff["name"],
-                                        group_id=aff["id"]
-                                else:
-                                    group_name=aff["name"]
-                                    group_id=aff["id"]
+                                group_name=aff["name"]
+                                group_id=aff["id"]
                             else:
-                                if institutions:
-                                    if aff["id"] in aff_list:
-                                        inst_name=aff["name"]
-                                        inst_id=aff["id"]
-                                else:    
-                                    inst_name=aff["name"]
-                                    inst_id=aff["id"]
+                                inst_name=aff["name"]
+                                inst_id=aff["id"]
 
             entry["coauthors"].append(
                 {"id":reg["_id"],"name":reg["author"]["full_name"],
@@ -311,7 +301,7 @@ class AuthorsApp(sdsPluginBase):
 
         entry["geo"]=geojson
 
-        db_reg=self.colav_db["authors"].find_one({"_id":ObjectId(idx)})
+        db_reg=self.colav_db["person"].find_one({"_id":ObjectId(idx)})
         if db_reg:
             if "coauthors_network" in db_reg.keys():
                 entry["coauthors_network"]=db_reg["coauthors_network"]
