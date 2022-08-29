@@ -779,7 +779,7 @@ class SubjectsApp(sdsPluginBase):
                     "products_count":1,"citations_count":1,"subjects":1}}
             ])
 
-            total_results = self.colav_db["person"].count_documents({"subjects.id":ObjectId(idx)})
+            total_results = self.colav_db["person"].count_documents({"subjects.subjects.id":ObjectId(idx)})
 
             if not page:
                 page=1
