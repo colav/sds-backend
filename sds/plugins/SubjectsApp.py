@@ -504,7 +504,7 @@ class SubjectsApp(sdsPluginBase):
         else:
             return None
 
-    def get_institutions(self,idx=None,start_year=None,end_year=None,page=1,max_results=100,sort="citations",direction="descending"):
+    def get_institutions(self,idx=None,groups="",institutions="",start_year=None,end_year=None,page=1,max_results=100,sort="citations",direction="descending"):
 
         if not page:
             page=1
@@ -537,6 +537,23 @@ class SubjectsApp(sdsPluginBase):
                 return None
 
         search_dict={"types.type":{"$ne":"group"},"subjects.subjects.id":ObjectId(idx)}
+        ins_list=[]
+        grp_list=[]
+        def_ins_list=[]
+        if groups:
+            grp_list.extend(groups.split())
+        if institutions:
+            ins_list.extend(institutions.split())
+        if len(ins_list)>0:
+            def_list=[]
+            for iid in ins_list:
+                def_ins_list.append(ObjectId(iid))
+            search_dict["_id"]={"$in":def_ins_list}
+        if len(grp_list)>0:
+            def_grp_list=[]
+            for iid in grp_list:
+                def_grp_list.append(ObjectId(iid))
+            search_dict["relations.id"]={"$in":def_grp_list}
         var_dict={"names":1,"products_count":1,"citations_count":1,"products_by_year":1,"subjects":1}
         total=self.colav_db["affiliations"].count_documents(search_dict)
 
@@ -606,11 +623,24 @@ class SubjectsApp(sdsPluginBase):
 
         return {"total":total,"page":page,"count":len(data),"data":data}
     
-    def get_groups(self,idx=None,page=1,max_results=100,start_year=None,end_year=None,institutions="",sort="citations",direction="descending"):
+    def get_groups(self,idx=None,page=1,max_results=10,groups="",institutions="",start_year=None,end_year=None,sort="citations",direction="descending"):
         search_dict={"types.type":"group","subjects.subjects.id":ObjectId(idx)}
+        ins_list=[]
+        grp_list=[]
+        if groups:
+            grp_list.extend(groups.split())
         if institutions:
-            institutions_list=[ObjectId(inst) for inst in institutions.split()]
-            search_dict["relations.id"]={"$in":institutions_list}
+            ins_list.extend(institutions.split())
+        if len(ins_list)>0:
+            def_ins_list=[]
+            for iid in ins_list:
+                def_ins_list.append(ObjectId(iid))
+            search_dict["relations.id"]={"$in":def_ins_list}
+        if len(grp_list)>0:
+            def_grp_list=[]
+            for iid in grp_list:
+                def_grp_list.append(ObjectId(iid))
+            search_dict["_id"]={"$in":def_grp_list}
         total_results = self.colav_db["affiliations"].count_documents(search_dict)
 
         if start_year:
@@ -952,8 +982,15 @@ class SubjectsApp(sdsPluginBase):
             idx = self.request.args.get('id')
             max_results=self.request.args.get('max')
             page=self.request.args.get('page')
-            institutions=self.request.args.get('institutions')
-            res=self.get_groups(idx,page=page,max_results=max_results,institutions=institutions)
+            sort=self.request.args.get('sort')
+            start_year=self.request.args.get('start_year')
+            end_year=self.request.args.get('end_year')
+            inst=self.request.args.get('institutions')
+            grps=self.request.args.get('groups')
+            res=self.get_groups(idx,
+                page=page,max_results=max_results,sort=sort,
+                start_year=start_year,end_year=end_year,
+                groups=grps,institutions=inst)
             if res:
                 response = self.app.response_class(
                 response=self.json.dumps(res),
@@ -970,7 +1007,15 @@ class SubjectsApp(sdsPluginBase):
             idx = self.request.args.get('id')
             max_results=self.request.args.get('max')
             page=self.request.args.get('page')
-            res=self.get_institutions(idx,page=page,max_results=max_results)
+            sort=self.request.args.get('sort')
+            inst=self.request.args.get('institutions')
+            grps=self.request.args.get('groups')
+            start_year=self.request.args.get('start_year')
+            end_year=self.request.args.get('end_year')
+            res=self.get_institutions(idx,
+                page=page,max_results=max_results,sort=sort,
+                start_year=start_year,end_year=end_year,
+                groups=grps,institutions=inst)
             if res:
                 response = self.app.response_class(
                 response=self.json.dumps(res),
