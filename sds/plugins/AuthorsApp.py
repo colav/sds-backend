@@ -259,6 +259,7 @@ class AuthorsApp(sdsPluginBase):
                     },
                 "count":reg["count"]} 
             )
+            entry["coauthors"]=sorted(entry["coauthors"],key=lambda x:x["count"],reverse=True)
 
         countries={}
         country_list=[]

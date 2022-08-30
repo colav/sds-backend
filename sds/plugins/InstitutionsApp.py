@@ -163,6 +163,7 @@ class InstitutionsApp(sdsPluginBase):
                         } 
                     )
                     affiliations_ids.append(inst_id)
+        entry["coauthors"]=sorted(entry["coauthors"],key=lambda x:x["count"],reverse=True)
 
         countries={}
         country_list=[]
