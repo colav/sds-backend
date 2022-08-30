@@ -159,27 +159,23 @@ class AuthorsApp(sdsPluginBase):
         else:
             return None
 
-        if not "subjects_by_year" in result.keys():
-            return None
-        if not result["subjects_by_year"]:
-            return None
-
         data=[]
         names=[]
-        for val in result["subjects_by_year"]:
-            year=val["year"]
-            if start_year:
-                if start_year>year:
-                    continue
-            if end_year:
-                if end_year<year:
-                    continue
-            for sub in val["subjects"]:
-                if sub["name"] in names:
-                    data[names.index(sub["name"])]["products"]+=sub["products"]
-                else:
-                    data.append(sub)
-                    names.append(sub["name"])
+        if "subjects_by_year" in result.keys():
+            for val in result["subjects_by_year"]:
+                year=val["year"]
+                if start_year:
+                    if start_year>year:
+                        continue
+                if end_year:
+                    if end_year<year:
+                        continue
+                for sub in val["subjects"]:
+                    if sub["name"] in names:
+                        data[names.index(sub["name"])]["products"]+=sub["products"]
+                    else:
+                        data.append(sub)
+                        names.append(sub["name"])
         
         sorted_data=sorted(data,key=lambda x:x["products"],reverse=True)
                 
@@ -263,6 +259,7 @@ class AuthorsApp(sdsPluginBase):
                     },
                 "count":reg["count"]} 
             )
+            entry["coauthors"]=sorted(entry["coauthors"],key=lambda x:x["count"],reverse=True)
 
         countries={}
         country_list=[]

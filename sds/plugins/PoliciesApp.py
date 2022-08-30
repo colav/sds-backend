@@ -627,6 +627,9 @@ class PoliciesApp(sdsPluginBase):
                             "products":s["products"],
                             "citations":s["citations"]
                         })
+            entry["subjects"]=sorted(entry["subjects"],key=lambda x:x["products"],reverse=True)
+            if entry["subjects"]:
+                entry["subjects"]=entry["subjects"][:10] if len(entry["subjects"])>=10 else entry["subjects"]
             
             year_index={}
             i=0
@@ -737,6 +740,9 @@ class PoliciesApp(sdsPluginBase):
                             "products":s["products"],
                             "citations":s["citations"]
                         })
+            entry["subjects"]=sorted(entry["subjects"],key=lambda x:x["products"],reverse=True)
+            if entry["subjects"]:
+                entry["subjects"]=entry["subjects"][:10] if len(entry["subjects"])>=10 else entry["subjects"]
             
             year_index={}
             i=0
@@ -889,7 +895,18 @@ class PoliciesApp(sdsPluginBase):
                             }
                             for subs in reg["subjects"]:
                                 if subs["source"]=="openalex":
-                                    entry["subjects"]=subs["subjects"]
+                                    for sub in subs["subjects"]:
+                                        name=sub["names"][0]["name"]
+                                        for n in sub["names"]:
+                                            if n["lang"]=="es":
+                                                name=n["name"]
+                                                break
+                                            if n["lang"]=="en":
+                                                name=n["name"]
+                                        entry["subjects"].append({
+                                            "name":name,
+                                            "id":sub["id"]
+                                        })
                                     break
                             data.append(entry)
             

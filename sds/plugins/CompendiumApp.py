@@ -378,6 +378,7 @@ class CompendiumApp(sdsPluginBase):
                 if subs["source"]=="openalex":
                     entry["subjects"]=subs["subjects"]
                     break
+            entry["subjects"]=sorted(entry["subjects"],key=lambda x:x["products"],reverse=True)
             if entry["subjects"]:
                 entry["subjects"]=entry["subjects"][:10] if len(entry["subjects"])>=10 else entry["subjects"]
 

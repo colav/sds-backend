@@ -135,9 +135,10 @@ class InstitutionsApp(sdsPluginBase):
             "geo":[]
         }
 
+        affiliations_ids=[]
         for reg in self.colav_db["works"].aggregate(pipeline):
-            affiliation_id = ""
-            affiliation_name = ""
+            inst_id = ""
+            inst_name = ""
             group_id=""
             group_name=""
             if str(reg["_id"])==str(idx):
@@ -146,21 +147,23 @@ class InstitutionsApp(sdsPluginBase):
                 for aff in reg["author"]["affiliations"]:
                     if "types" in aff.keys():
                         for typ in aff["types"]:
-                            if typ["type"]=="group":
-                                group_name=aff["name"]
-                                group_id=aff["id"]
-                            else:    
+                            if typ["type"]!="group":    
                                 inst_name=aff["name"]
                                 inst_id=aff["id"]
 
-            entry["coauthors"].append(
-                {"id":reg["_id"],"name":reg["author"]["full_name"],
-                "affiliation":{
-                    "institution":{"id":affiliation_id,"name":affiliation_name} ,
-                    "group":{"id":group_id,"name":group_name} ,
-                    },
-                "count":reg["count"]} 
-            )
+            if inst_id:
+                if inst_id in affiliations_ids:
+                    entry["coauthors"][affiliations_ids.index(inst_id)]["count"]+=reg["count"]
+                else:
+                    entry["coauthors"].append(
+                        {
+                            "name":inst_name,
+                            "id":inst_id,
+                            "count":reg["count"]
+                        } 
+                    )
+                    affiliations_ids.append(inst_id)
+        entry["coauthors"]=sorted(entry["coauthors"],key=lambda x:x["count"],reverse=True)
 
         countries={}
         country_list=[]

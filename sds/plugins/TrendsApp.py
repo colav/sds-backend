@@ -14,10 +14,10 @@ class TrendsApp(sdsPluginBase):
         subject=self.colav_db["subjects"].find_one({"names.name":{"$regex":".*covid.*","$options":"i"}},{"_id":1})
         covid_data={
             "id":subject["_id"] if subject else "",
-            "products":self.colav_db["works"].count_documents({"subjects.name":{"$regex":".*covid.*","$options":"i"}}),
-            "authors":self.colav_db["person"].count_documents({"subjects.name":{"$regex":".*covid.*","$options":"i"}}),
-            "institutions":self.colav_db["affiliations"].count_documents({"types.type":{"$ne":"group"},"subjects.name":{"$regex":".*covid.*","$options":"i"}}),
-            "groups":self.colav_db["affiliations"].count_documents({"types.type":"group","subjects.name":{"$regex":".*covid.*","$options":"i"}})
+            "products":self.colav_db["works"].count_documents({"subjects.subjects.names.name":{"$regex":".*covid.*","$options":"i"}}),
+            "authors":self.colav_db["person"].count_documents({"subjects.subjects.name":{"$regex":".*covid.*","$options":"i"}}),
+            "institutions":self.colav_db["affiliations"].count_documents({"types.type":{"$ne":"group"},"subjects.subjects.name":{"$regex":".*covid.*","$options":"i"}}),
+            "groups":self.colav_db["affiliations"].count_documents({"types.type":"group","subjects.subjects.name":{"$regex":".*covid.*","$options":"i"}})
         }
 
         ods_data=[]
