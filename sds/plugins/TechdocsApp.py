@@ -33,7 +33,7 @@ class TechdocsApp(sdsPluginBase):
         return {"data":files_sorted}
 
     @endpoint('/app/techdocs', methods=['GET'])
-    def app_regulations(self):
+    def app_techdocs(self):
         data = self.request.args.get('data')
         filename = self.request.args.get('file')
         if data=="info":
