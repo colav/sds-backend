@@ -27,7 +27,7 @@ class TechdocsApp(sdsPluginBase):
                 files.append({
                     "filename":filename,
                     "date":date_str,
-                    "size":os.stat('sds/etc/'+filename).st_size/1024
+                    "size":os.stat('sds/etc/fichas/'+filename).st_size/1024
                 })
         files_sorted=sorted(files,key=lambda x:dates[x["date"]],reverse=True)
         return {"data":files_sorted}
