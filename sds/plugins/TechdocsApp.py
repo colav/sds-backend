@@ -15,7 +15,7 @@ class TechdocsApp(sdsPluginBase):
     def get_info(self):
         files=[]
         dates={}
-        for filename in os.listdir('sds/etc/fichas.'):
+        for filename in os.listdir('sds/etc/fichas/.'):
             if "pdf" in filename:
                 try:
                     date_str=re.findall("^[0-9]*-[0-9]*-[0-9]*",filename)[0]
