@@ -8,17 +8,15 @@ from flask import send_file
 
 
 
-class RegulationsApp(sdsPluginBase):
+class TechdocsApp(sdsPluginBase):
     def __init__(self, sds):
         super().__init__(sds)
 
     def get_info(self):
         files=[]
         dates={}
-        for filename in os.listdir('sds/etc/.'):
+        for filename in os.listdir('sds/etc/fichas.'):
             if "pdf" in filename:
-                if "manual_usuario" in filename:
-                    continue
                 try:
                     date_str=re.findall("^[0-9]*-[0-9]*-[0-9]*",filename)[0]
                     date=dt.datetime.strptime(date_str,"%Y-%m-%d")
@@ -34,7 +32,7 @@ class RegulationsApp(sdsPluginBase):
         files_sorted=sorted(files,key=lambda x:dates[x["date"]],reverse=True)
         return {"data":files_sorted}
 
-    @endpoint('/app/regulations', methods=['GET'])
+    @endpoint('/app/techdocs', methods=['GET'])
     def app_regulations(self):
         data = self.request.args.get('data')
         filename = self.request.args.get('file')
@@ -53,8 +51,10 @@ class RegulationsApp(sdsPluginBase):
                 mimetype='application/json' 
             )
         elif filename:
-            if os.path.isfile('sds/etc/'+filename):
+            if filename=="Manual de Usuario.pdf":
                 response = send_file('sds/etc/'+filename,as_attachment=True)
+            elif os.path.isfile('sds/etc/'+filename):
+                response = send_file('sds/etc/fichas/'+filename,as_attachment=True)
             else:
                 response = self.app.response_class(
                 response=self.json.dumps({"status":"Request returned empty"}),
