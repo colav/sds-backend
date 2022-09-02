@@ -34,8 +34,8 @@ class TrendsApp(sdsPluginBase):
                 "name":name,
                 "index":"",
                 "products":self.colav_db["works"].count_documents({"policies.id":policy["_id"]}),
-                "authors":self.colav_db["person"].count_documents({"policies.id":policy["_id"]}),
-                "institutions":self.colav_db["affiliations"].count_documents({"types.type":{"$ne":"group"},"policies.id":policy["_id"]}),
+                "authors":self.colav_db["person"].count_documents({"policies.id":policy["_id"],"external_ids":{"$ne":[]}}),
+                "institutions":self.colav_db["affiliations"].count_documents({"types.type":{"$ne":"group"},"policies.id":policy["_id"],"external_ids":{"$ne":[]}}),
                 "groups":self.colav_db["affiliations"].count_documents({"types.type":"group","policies.id":policy["_id"]})
             }
             if len(policy["index"])>0:
@@ -48,8 +48,8 @@ class TrendsApp(sdsPluginBase):
         pdd_data={
             "id":pdd_reg["_id"],
             "products":self.colav_db["works"].count_documents({"policies.id":pdd_reg["_id"]}),
-            "authors":self.colav_db["person"].count_documents({"policies.id":pdd_reg["_id"]}),
-            "institutions":self.colav_db["affiliations"].count_documents({"types.type":{"$ne":"group"},"policies.id":pdd_reg["_id"]}),
+            "authors":self.colav_db["person"].count_documents({"policies.id":pdd_reg["_id"],"external_ids":{"$ne":[]}}),
+            "institutions":self.colav_db["affiliations"].count_documents({"types.type":{"$ne":"group"},"policies.id":pdd_reg["_id"],"external_ids":{"$ne":[]}}),
             "groups":self.colav_db["affiliations"].count_documents({"types.type":"group","policies.id":pdd_reg["_id"]}),
             "tree":[]
         }
