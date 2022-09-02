@@ -53,7 +53,7 @@ class TechdocsApp(sdsPluginBase):
         elif filename:
             if filename=="Manual de Usuario.pdf":
                 response = send_file('sds/etc/'+filename,as_attachment=True)
-            elif os.path.isfile('sds/etc/'+filename):
+            elif os.path.isfile('sds/etc/fichas/'+filename):
                 response = send_file('sds/etc/fichas/'+filename,as_attachment=True)
             else:
                 response = self.app.response_class(
