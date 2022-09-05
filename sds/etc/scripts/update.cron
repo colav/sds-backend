@@ -1,0 +1,2 @@
+0 0 30 5 * bash /sds-backend/sds/etc/scripts/update.bash
+0 0 30 11 * bash /sds-backend/sds/etc/scripts/update.bash
