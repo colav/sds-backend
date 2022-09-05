@@ -64,9 +64,9 @@ class DocumentsApp(sdsPluginBase):
                     "name":source["title"],
                     "serials":{}
                 }
-                for serial in source["serials"]:
-                    if not serial["type"] in entry_source.keys():
-                        entry_source["serials"][serial["type"]]=serial["value"]
+                for serial in source["external_ids"]:
+                    if not serial["source"] in entry_source["serials"].keys():
+                        entry_source["serials"][serial["source"]]=serial["id"]
                 entry["source"]=entry_source
 
             for author in document["authors"]:
