@@ -248,8 +248,8 @@ class AuthorsApp(sdsPluginBase):
                                 group_name=aff["name"]
                                 group_id=aff["id"]
                             else:
-                                inst_name=aff["name"]
-                                inst_id=aff["id"]
+                                affiliation_name=aff["name"]
+                                affiliation_id=aff["id"]
 
             entry["coauthors"].append(
                 {"id":reg["_id"],"name":reg["author"]["full_name"],

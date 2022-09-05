@@ -254,17 +254,19 @@ class CallsApp(sdsPluginBase):
                 for a in m.find_all("a",class_="ukri-funder__link",href=True):
                     entry["funders"]=a.get_text().strip()
                     entry["funders_url"]=a["href"]
-                for odx,o in enumerate(m.find_all("dd",class_="opportunity-cells")):
-                    if odx==2:
-                        entry["type"]=o.get_text().strip()
-                    elif odx==3:
-                        entry["total_fund"]=o.get_text().strip()
-                    elif odx==4:
-                        entry["publication_date"]=o.get_text().strip()
-                    elif odx==5:
-                        entry["opening_date"]=o.get_text().strip()
-                    elif odx==6:
-                        entry["closing_date"]=o.get_text().strip()
+                contents=list(m.find_all("dd",class_="opportunity-cells"))
+                titles=list(m.find_all("dt",class_="opportunity-cells"))
+                for odx,o in enumerate(titles):
+                    if o.get_text().strip()=="Funding type:":
+                        entry["type"]=contents[odx].get_text().strip()
+                    elif o.get_text().strip()=="Total fund:":
+                        entry["total_fund"]=contents[odx].get_text().strip()
+                    elif o.get_text().strip()=="Publication date:":
+                        entry["publication_date"]=contents[odx].get_text().strip()
+                    elif o.get_text().strip()=="Opening date:":
+                        entry["opening_date"]=contents[odx].get_text().strip()
+                    elif o.get_text().strip()=="Closing date:":
+                        entry["closing_date"]=contents[odx].get_text().strip()
             data.append(entry)
         numbers=[]
         page_numbers=soup.find_all('a',class_='page-numbers')

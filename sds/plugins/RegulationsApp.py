@@ -17,6 +17,8 @@ class RegulationsApp(sdsPluginBase):
         dates={}
         for filename in os.listdir('sds/etc/.'):
             if "pdf" in filename:
+                if "manual_usuario" in filename:
+                    continue
                 try:
                     date_str=re.findall("^[0-9]*-[0-9]*-[0-9]*",filename)[0]
                     date=dt.datetime.strptime(date_str,"%Y-%m-%d")
