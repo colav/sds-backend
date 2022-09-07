@@ -135,10 +135,13 @@ class SearchApp(sdsPluginBase):
                                         institution_filters.append(entry)
 
 
+        
         if sort=="citations":
             cursor.sort([("citations_count",DESCENDING)])
         elif sort=="products":
             cursor.sort([("products_count",DESCENDING)])
+        elif sort=="pbi":
+            pass
         else:
             cursor.sort([("score", { "$meta": "textScore" } )])
 
@@ -245,6 +248,8 @@ class SearchApp(sdsPluginBase):
             cursor.sort([("citations_count",DESCENDING)])
         elif sort=="products":
                 cursor.sort([("products_count",DESCENDING)])
+        elif sort=="pbi":
+            pass
         else:
             cursor.sort([("score", { "$meta": "textScore" } )])
 
@@ -316,6 +321,8 @@ class SearchApp(sdsPluginBase):
             cursor.sort([("citations_count",DESCENDING)])
         elif sort=="products":
             cursor.sort([("products_count",DESCENDING)])
+        elif sort=="pbi":
+            pass
         else:
             cursor.sort([("score", { "$meta": "textScore" } )])
 
