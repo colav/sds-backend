@@ -24,9 +24,13 @@ class UpdateApp(sdsPluginBase):
         self.dbclient.drop_database("sds")
 
     def update_db(self,url="http://colav.co/snapshots/"):
+        print("Attempting snapshot download")
         response=os.system("wget "+url+"sds.tgz")
+        print("Decompressing")
         response=os.system("tar -zxvf sds.tgz")
+        print("Attempting restoreing")
         response=os.system("mongorestore -d sds dump/sds")
+        
         return {"response":response}
 
     def pull(self):
