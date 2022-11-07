@@ -15,18 +15,18 @@ class UpdateApp(sdsPluginBase):
 
     def restore_db(self):
         if os.path.exists("dump"):
-            response=os.system("mongorestore -d sds-test-restore dump/sds")
+            response=os.system("mongorestore -d sds dump/sds")
         else:
             response=-1
         return {"response":response}
     
     def delete_db(self):
-        self.dbclient.drop_database("sds-test-restore")
+        self.dbclient.drop_database("sds")
 
     def update_db(self,url="http://colav.co/snapshots/"):
         response=os.system("wget "+url+"sds.tgz")
         response=os.system("tar -zxvf sds.tgz")
-        response=os.system("mongorestore -d sds-test-restore dump/sds")
+        response=os.system("mongorestore -d sds dump/sds")
         return {"response":response}
 
     def pull(self):
