@@ -24,12 +24,14 @@ class UpdateApp(sdsPluginBase):
         self.dbclient.drop_database("sds")
 
     def update_db(self,url="http://colav.co/snapshots/"):
+        response=os.system("rm -rf sds.tgz")
+        response=os.system("rm -rf update")
         print("Attempting snapshot download")
         response=os.system("wget "+url+"sds.tgz")
         print("Decompressing")
         response=os.system("tar -zxvf sds.tgz")
-        print("Attempting restoreing")
-        response=os.system("mongorestore -h $MONGODB_IP  -d sds sds/")
+        print("Attempting restoring")
+        response=os.system("mongorestore -h $MONGODB_IP  -d sds update/sds")
         
         return {"response":response}
 
