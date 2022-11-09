@@ -29,7 +29,7 @@ class UpdateApp(sdsPluginBase):
         print("Decompressing")
         response=os.system("tar -zxvf sds.tgz")
         print("Attempting restoreing")
-        response=os.system("mongorestore -h $MONGODB_IP sds")
+        response=os.system("mongorestore -h $MONGODB_IP  -d sds sds/")
         
         return {"response":response}
 
