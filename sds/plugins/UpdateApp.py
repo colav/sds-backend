@@ -10,12 +10,12 @@ class UpdateApp(sdsPluginBase):
 
     def backup_db(self):
         response=os.system("rm -rf dump/")
-        response=os.system("mongodump -d sds")
+        response=os.system("mongodump $MONGODB_IP -d sds")
         return {"response":response}
 
     def restore_db(self):
         if os.path.exists("dump"):
-            response=os.system("mongorestore -d sds dump/sds")
+            response=os.system("mongorestore $MONGODB_IP -d sds dump/sds")
         else:
             response=-1
         return {"response":response}
@@ -29,7 +29,7 @@ class UpdateApp(sdsPluginBase):
         print("Decompressing")
         response=os.system("tar -zxvf sds.tgz")
         print("Attempting restoreing")
-        response=os.system("mongorestore -d sds dump/sds")
+        response=os.system("mongorestore -h $MONGODB_IP -d sds dump/sds")
         
         return {"response":response}
 
