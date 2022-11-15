@@ -61,7 +61,7 @@ class DocumentsApp(sdsPluginBase):
             if "source" in document.keys():
                 source=self.colav_db["sources"].find_one({"_id":document["source"]["id"]})
                 entry_source={
-                    "name":source["title"],
+                    "name":document["source"]["title"],
                     "serials":{}
                 }
                 for serial in source["external_ids"]:
