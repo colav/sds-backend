@@ -628,7 +628,7 @@ class InstitutionsApp(sdsPluginBase):
                 if "source" in paper.keys():
                     source=self.colav_db["sources"].find_one({"_id":paper["source"]["id"]})
                     if source:
-                        entry["source"]={"name":source["title"],"id":source["_id"]}
+                        entry["source"]={"name":paper["source"]["title"],"id":paper["source"]["id"]}
                 
                 authors=[]
                 for author in paper["authors"]:
