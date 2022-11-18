@@ -438,7 +438,7 @@ class PoliciesApp(sdsPluginBase):
                         break
 
                 if "source" in paper.keys():
-                    entry["source"]={"name":paper["source"]["title"],"id":paper["source"]["_id"]}
+                    entry["source"]={"name":paper["source"]["title"],"id":paper["source"]["id"]}
                 
                 authors=[]
                 for author in paper["authors"]:
