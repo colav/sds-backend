@@ -1,6 +1,6 @@
 
+import json
 from flask import (
-    json,
     request
 )
 from bson import ObjectId

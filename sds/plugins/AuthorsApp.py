@@ -265,11 +265,11 @@ class AuthorsApp(sdsPluginBase):
         country_list=[]
         pipeline=[pipeline[0]]
         pipeline.extend([
+            {"$project":{"count":1,"affiliation.addresses.country_code":1,"affiliation.addresses.country":1,"authors.affiliations.id":1}},
             {"$unwind":"$authors"},
             {"$group":{"_id":"$authors.affiliations.id","count":{"$sum":1}}},
             {"$unwind":"$_id"},
             {"$lookup":{"from":"affiliations","localField":"_id","foreignField":"_id","as":"affiliation"}},
-            {"$project":{"count":1,"affiliation.addresses.country_code":1,"affiliation.addresses.country":1}},
             {"$unwind":"$affiliation"},
             {"$unwind":"$affiliation.addresses"}
         ])
