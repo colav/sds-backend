@@ -8,9 +8,9 @@ class SearchApp(sdsPluginBase):
 
     def search_subjects(self,keywords='',max_results=100,page=1,sort="products",direction="descending"):
         if keywords:
-            cursor=self.colav_db["subjects"].find({"$text":{"$search":keywords}})
+            cursor=self.colav_db["subjects"].find({"$text":{"$search":keywords}}, {"names":1,"products_count":1,"citations_count":1})
         else:
-            cursor=self.colav_db["subjects"].find()
+            cursor=self.colav_db["subjects"].find({}, {"names":1,"products_count":1,"citations_count":1})
 
         if sort=="citations":
             cursor.sort([("citations_count",DESCENDING)])
